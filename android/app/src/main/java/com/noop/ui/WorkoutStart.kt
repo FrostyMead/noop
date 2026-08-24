@@ -187,7 +187,7 @@ private fun StartSportRow(sp: Sport, isSelected: Boolean, onPick: () -> Unit) {
  * a live session needs the strap to stream) beside Add — or just Add when there's no strap.
  */
 @Composable
-fun WorkoutStartSection(vm: AppViewModel, onAdd: () -> Unit) {
+fun WorkoutStartSection(vm: AppViewModel, onAdd: () -> Unit, onStrength: () -> Unit) {
     val live by vm.live.collectAsStateWithLifecycle()
     val activeWorkout by vm.activeWorkout.collectAsStateWithLifecycle()
     var showSportPicker by remember { mutableStateOf(false) }
@@ -232,24 +232,39 @@ fun WorkoutStartSection(vm: AppViewModel, onAdd: () -> Unit) {
                 ) { Text(uiString(R.string.l10n_workout_start_end_a2bb9d34), style = NoopType.captionNumber) }
                 }
             }
-            AddWorkoutButton(onAdd, Modifier.fillMaxWidth())
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                AddWorkoutButton(onAdd, Modifier.weight(1f))
+                OutlinedButton(onClick = onStrength, modifier = Modifier.weight(1f)) {
+                    Text("Log strength", style = NoopType.captionNumber)
+                }
+            }
         }
     } else if (live.bonded) {
         // Start + Add as an equal-width action row (EXP-018 parity with the iOS workoutActionRow).
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = { showSportPicker = true },
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Palette.accent, contentColor = Palette.surfaceBase,
-                ),
-            ) { Text(uiString(R.string.l10n_workout_start_start_workout_d0f3f2cd), style = NoopType.captionNumber) }
-            AddWorkoutButton(onAdd, Modifier.weight(1f))
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = { showSportPicker = true },
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Palette.accent, contentColor = Palette.surfaceBase,
+                    ),
+                ) { Text(uiString(R.string.l10n_workout_start_start_workout_d0f3f2cd), style = NoopType.captionNumber) }
+                AddWorkoutButton(onAdd, Modifier.weight(1f))
+            }
+            OutlinedButton(onClick = onStrength, modifier = Modifier.fillMaxWidth()) {
+                Text("Log strength", style = NoopType.captionNumber)
+            }
         }
     } else {
         // No strap to stream from: no live Start, but keep Add so a user with no imports can still log.
-        AddWorkoutButton(onAdd, Modifier.fillMaxWidth())
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            AddWorkoutButton(onAdd, Modifier.fillMaxWidth())
+            OutlinedButton(onClick = onStrength, modifier = Modifier.fillMaxWidth()) {
+                Text("Log strength", style = NoopType.captionNumber)
+            }
+        }
     }
 
     if (showSportPicker) {

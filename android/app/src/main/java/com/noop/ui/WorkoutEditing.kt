@@ -339,7 +339,7 @@ object WorkoutEditing {
 
     /**
      * Carry the captured fields the add/edit sheet does NOT expose (maxHr, strain, zonesJSON, notes,
-     * routePolyline) over from the row being edited. A live-tracked session has real captured
+     * routePolyline, steps, strengthJSON) over from the row being edited. A live-tracked session has real captured
      * strain/maxHr/route; rebuilding from the sheet's inputs alone would wipe them on an edit. No-op for a
      * fresh add (old == null). distanceM is NOW a sheet field (#1195), so it comes from the freshly built
      * row (the sheet pre-fills it from the edited row, so an untouched field preserves the captured GPS
@@ -359,6 +359,7 @@ object WorkoutEditing {
             // (#1058) is a captured field the sheet never exposes, so it is restored from `old` like
             // the rest. Twin of Swift WorkoutSource.preservingCaptured.
             steps = old.steps,
+            strengthJSON = old.strengthJSON,
         )
     }
 
@@ -485,8 +486,8 @@ data class WorkoutFilter(
 
 object WorkoutMerge {
 
-    /** Only MANUAL and DETECTED rows can be merged (imported history stays read-only). */
-    fun isMergeable(row: WorkoutRow): Boolean = when (WorkoutEditing.classify(row.source)) {
+    /** Structured strength logs stay atomic until a set-aware merge is defined. */
+    fun isMergeable(row: WorkoutRow): Boolean = row.strengthJSON == null && when (WorkoutEditing.classify(row.source)) {
         WorkoutSource.MANUAL, WorkoutSource.DETECTED -> true
         WorkoutSource.WHOOP, WorkoutSource.APPLE, WorkoutSource.LIFTING, WorkoutSource.ACTIVITY_FILE -> false
     }

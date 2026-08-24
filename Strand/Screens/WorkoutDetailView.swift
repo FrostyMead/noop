@@ -80,6 +80,7 @@ struct WorkoutDetailView: View {
                        topBackground: liquidScaffoldSky()) {
             headerCard
             statStrip
+            strengthCard
             routeCard
             hrCurveCard
             zonesCard
@@ -95,6 +96,61 @@ struct WorkoutDetailView: View {
             }
         }
         .task { await load() }
+    }
+
+    // MARK: - Strength log
+
+    private var strengthWorkout: StrengthWorkout? { StrengthWorkout.decode(row.strengthJSON) }
+
+    @ViewBuilder private var strengthCard: some View {
+        if let strength = strengthWorkout {
+            VStack(alignment: .leading, spacing: NoopMetrics.gap) {
+                SectionHeader("Strength", overline: "Set-level log",
+                              trailing: "\(strength.workingSetCount) working sets")
+                NoopCard(tint: StrandPalette.metricCyan) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 0) {
+                            strengthStat("Exercises", "\(strength.exercises.count)")
+                            strengthStat("Reps", "\(strength.totalReps)")
+                            strengthStat("Volume", strengthLoad(strength.volumeLoadKg))
+                            strengthStat("Top load", strength.topWeightKg.map(strengthLoad) ?? "–")
+                        }
+                        Divider().overlay(StrandPalette.hairline)
+                        ForEach(strength.exercises) { exercise in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(exercise.name).font(StrandFont.body).foregroundStyle(StrandPalette.textPrimary)
+                                Text(exercise.sets.enumerated().map { index, set in
+                                    let load = set.weightKg.map(strengthLoad) ?? String(localized: "bodyweight")
+                                    let warmup = set.isWarmup ? String(localized: " · warm-up") : ""
+                                    return "\(index + 1): \(set.reps) × \(load)\(warmup)"
+                                }.joined(separator: "   "))
+                                .font(StrandFont.footnote)
+                                .foregroundStyle(StrandPalette.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        Text("Volume is reps × external load for working sets. It is shown separately from HR-derived Effort.")
+                            .font(StrandFont.footnote).foregroundStyle(StrandPalette.textTertiary)
+                    }
+                }
+            }
+        }
+    }
+
+    private func strengthStat(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label).strandOverline()
+            Text(value).font(StrandFont.number(18)).foregroundStyle(StrandPalette.textPrimary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func strengthLoad(_ kg: Double) -> String {
+        let value = unitSystem == .imperial ? kg * 2.204_622_621_8 : kg
+        let unit = unitSystem == .imperial ? "lb" : "kg"
+        let rounded = value.rounded()
+        let number = abs(value - rounded) < 0.005 ? "\(Int(rounded))" : String(format: "%.1f", value)
+        return "\(number) \(unit)"
     }
 
     // MARK: - Load
@@ -720,7 +776,8 @@ struct WorkoutRouteMap: View {
             endTs: Int(Date().timeIntervalSince1970),
             sport: "Running", source: "whoop", durationS: 3600, energyKcal: 712,
             avgHr: 152, maxHr: 178, strain: 14.2, distanceM: 10_400,
-            zonesJSON: #"{"z1":12.5,"z2":28.0,"z3":33.5,"z4":18.0,"z5":6.0}"#, notes: nil, steps: nil))
+            zonesJSON: #"{"z1":12.5,"z2":28.0,"z3":33.5,"z4":18.0,"z5":6.0}"#, notes: nil, steps: nil,
+            strengthJSON: nil))
             .environmentObject(Repository(deviceId: "preview"))
     }
     .frame(width: 1040, height: 940)

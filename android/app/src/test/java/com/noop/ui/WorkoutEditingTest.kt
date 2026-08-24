@@ -393,6 +393,14 @@ class WorkoutEditingTest {
     }
 
     @Test
+    fun preservingCaptured_carriesStrengthPayloadFromOld() {
+        val old = row("my-whoop", 100, 3700, "Strength Training", "manual")
+            .copy(strengthJSON = "{\"version\":1}")
+        val edited = row("my-whoop", 100, 3700, "Strength Training", "manual")
+        assertEquals(old.strengthJSON, WorkoutEditing.preservingCaptured(edited, old).strengthJSON)
+    }
+
+    @Test
     fun preservingCaptured_carriesUnexposedFieldsOnEdit() {
         val old = row("my-whoop", 100, 3700, "Workout", "manual", avgHr = 130, maxHr = 175, strain = 13.5)
         val rebuilt = row("my-whoop", 100, 3700, "Running", "manual", avgHr = 140)
@@ -504,10 +512,13 @@ class WorkoutEditingTest {
         val detected = fullRow(100, 3700, "detected", "my-whoop-noop")
         val whoop = fullRow(100, 3700, "Running", "whoop")
         val apple = fullRow(100, 3700, "Running", "apple-health")
+        val structuredStrength = fullRow(100, 3700, "Strength Training", "manual")
+            .copy(strengthJSON = "{\"version\":1}")
         assertTrue(WorkoutMerge.isMergeable(manual))
         assertTrue(WorkoutMerge.isMergeable(detected))
         assertFalse(WorkoutMerge.isMergeable(whoop))
         assertFalse(WorkoutMerge.isMergeable(apple))
+        assertFalse(WorkoutMerge.isMergeable(structuredStrength))
         assertTrue(WorkoutMerge.canMerge(listOf(manual, detected)))
         assertFalse(WorkoutMerge.canMerge(listOf(manual)))
         assertFalse(WorkoutMerge.canMerge(listOf(manual, whoop)))

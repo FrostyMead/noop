@@ -1,6 +1,7 @@
 package com.noop.ui
 
 import com.noop.R
+import com.noop.data.StrengthWorkout
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -171,6 +172,7 @@ fun WorkoutsScreen(vm: AppViewModel) {
 
     // The manual add/edit dialog target: Some(null) = add, Some(row) = edit, null = closed.
     var dialog by remember { mutableStateOf<DialogTarget?>(null) }
+    var strengthDialog by remember { mutableStateOf<DialogTarget?>(null) }
 
     // #64: filters beyond the time range — sport (null = all), source class (null = all), free-text
     // search over the displayed sport. The pure WorkoutFilter applies them AFTER the window cut.
@@ -274,7 +276,11 @@ fun WorkoutsScreen(vm: AppViewModel) {
         // Start (or stop) a workout right here, not only on Live — mirrors the Live control (#115).
         // Start + Add sit side-by-side as an action row when a strap is bonded (EXP-018 parity).
         item {
-        WorkoutStartSection(vm, onAdd = { dialog = DialogTarget(null) })
+        WorkoutStartSection(
+            vm,
+            onAdd = { dialog = DialogTarget(null) },
+            onStrength = { strengthDialog = DialogTarget(null) },
+        )
         }
 
         if (allRows.isEmpty()) {
@@ -345,7 +351,11 @@ fun WorkoutsScreen(vm: AppViewModel) {
                     selectionMode = false; selectedKeys = emptySet()
                 },
                 onCancelSelect = { selectionMode = false; selectedKeys = emptySet() },
-                onEdit = { editRow, isCopy -> dialog = DialogTarget(editRow, isCopy) },
+                onEdit = { editRow, isCopy ->
+                    val target = DialogTarget(editRow, isCopy)
+                    if (StrengthWorkout.decode(editRow.strengthJSON) != null) strengthDialog = target
+                    else dialog = target
+                },
                 onRelabel = { row, sport ->
                     vm.relabelDetected(row, sport)
                     pendingNoteSport = WorkoutEditing.displaySport(sport)
@@ -378,6 +388,19 @@ fun WorkoutsScreen(vm: AppViewModel) {
                 vm.saveManualWorkout(row, replacing)
                 pendingNoteSport = WorkoutEditing.displaySport(row.sport)
                 dialog = null
+            },
+        )
+    }
+
+    strengthDialog?.let { target ->
+        StrengthWorkoutDialog(
+            editing = target.editing,
+            isCopy = target.isCopy,
+            onDismiss = { strengthDialog = null },
+            onSave = { row, replacing ->
+                vm.saveManualWorkout(row, replacing)
+                pendingNoteSport = WorkoutEditing.displaySport(row.sport)
+                strengthDialog = null
             },
         )
     }
@@ -1526,6 +1549,9 @@ private fun WorkoutDetailSheet(vm: AppViewModel, row: WorkoutRow, onDismiss: () 
             }
             steps?.let { DetailRow("Steps", "${grouped(it.toDouble())} steps") }  // #398, on-foot sports
             if (!row.notes.isNullOrBlank()) DetailRow("Notes", row.notes)
+            StrengthWorkout.decode(row.strengthJSON)?.let { strength ->
+                StrengthDetailCard(strength, UnitPrefs.system(LocalContext.current))
+            }
 
             // Export the recorded GPS route as a GPX/FIT file (Strava / Garmin Connect / any GPS app).
             // Only when a route with a drawable path was recorded; the file is built on-device and shared.
@@ -1878,6 +1904,56 @@ private fun SessionEffortCard(strain: Double, effortScale: EffortScale) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun StrengthDetailCard(strength: StrengthWorkout, unitSystem: UnitSystem) {
+    val imperial = unitSystem == UnitSystem.IMPERIAL
+    fun load(kg: Double): String {
+        val value = kg * if (imperial) 2.204_622_621_8 else 1.0
+        val number = if (kotlin.math.abs(value - value.roundToInt()) < 0.005) value.roundToInt().toString()
+        else String.format(Locale.US, "%.1f", value)
+        return "$number ${if (imperial) "lb" else "kg"}"
+    }
+    CardDivider()
+    Text("Strength log", style = NoopType.subhead, color = Palette.textPrimary)
+    NoopCard {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                DetailStrengthStat("Exercises", strength.exercises.size.toString(), Modifier.weight(1f))
+                DetailStrengthStat("Working sets", strength.workingSetCount.toString(), Modifier.weight(1f))
+                DetailStrengthStat("Reps", strength.totalReps.toString(), Modifier.weight(1f))
+                DetailStrengthStat("Volume", load(strength.volumeLoadKg), Modifier.weight(1f))
+            }
+            CardDivider()
+            strength.exercises.forEach { exercise ->
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(exercise.name, style = NoopType.body, color = Palette.textPrimary)
+                    Text(
+                        exercise.sets.mapIndexed { index, set ->
+                            val setLoad = set.weightKg?.let(::load) ?: "bodyweight"
+                            "${index + 1}: ${set.reps} × $setLoad${if (set.isWarmup) " · warm-up" else ""}"
+                        }.joinToString("   "),
+                        style = NoopType.footnote,
+                        color = Palette.textSecondary,
+                    )
+                }
+            }
+            Text(
+                "Volume is reps × external load for working sets. It is shown separately from HR-derived Effort.",
+                style = NoopType.footnote,
+                color = Palette.textTertiary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DetailStrengthStat(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(label, style = NoopType.overline, color = Palette.textTertiary)
+        Text(value, style = NoopType.captionNumber, color = Palette.textPrimary)
     }
 }
 

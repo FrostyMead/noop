@@ -541,7 +541,7 @@ public enum WorkoutDetector {
             maxHr: real.maxHr ?? peakHR,
             strain: real.strain ?? strain,
             distanceM: real.distanceM, zonesJSON: real.zonesJSON, notes: real.notes,
-            steps: real.steps)
+            steps: real.steps, strengthJSON: real.strengthJSON)
     }
 }
 
