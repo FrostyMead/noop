@@ -7,6 +7,7 @@ import WhoopStore
 /// cardiovascular Effort remains sourced from recorded HR by the existing analysis pass.
 struct StrengthWorkoutSheet: View {
     let editing: WorkoutRow?
+    let historicalWorkouts: [StrengthWorkout]
     let onSave: (_ row: WorkoutRow, _ replacing: WorkoutRow?) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -28,8 +29,10 @@ struct StrengthWorkoutSheet: View {
     private static let poundsPerKilogram = 2.204_622_621_8
 
     init(editing: WorkoutRow? = nil,
+         historicalWorkouts: [StrengthWorkout] = [],
          onSave: @escaping (_ row: WorkoutRow, _ replacing: WorkoutRow?) -> Void) {
         self.editing = editing
+        self.historicalWorkouts = historicalWorkouts
         self.onSave = onSave
         _start = State(initialValue: editing.map { Date(timeIntervalSince1970: TimeInterval($0.startTs)) }
                        ?? Date().addingTimeInterval(-45 * 60))
@@ -58,6 +61,7 @@ struct StrengthWorkoutSheet: View {
     }
 
     var body: some View {
+        let progressByID = strengthProgressByID
         ScrollView {
             VStack(alignment: .leading, spacing: NoopMetrics.space5) {
                 header
@@ -80,7 +84,7 @@ struct StrengthWorkoutSheet: View {
                 restTimerCard
 
                 ForEach($exercises) { $exercise in
-                    exerciseCard($exercise)
+                    exerciseCard($exercise, progress: progressByID[exercise.id])
                 }
 
                 NoopButton("Add exercise", systemImage: "plus", kind: .secondary, fullWidth: true) {
@@ -238,7 +242,8 @@ struct StrengthWorkoutSheet: View {
         }
     }
 
-    private func exerciseCard(_ exercise: Binding<ExerciseDraft>) -> some View {
+    private func exerciseCard(_ exercise: Binding<ExerciseDraft>,
+                              progress: StrengthExerciseProgress?) -> some View {
         NoopCard(tint: StrandPalette.effortColor) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
@@ -321,8 +326,69 @@ struct StrengthWorkoutSheet: View {
                         .font(StrandFont.footnote).foregroundStyle(StrandPalette.effortBright)
                 }
                 .buttonStyle(.plain)
+
+                progressionCard(progress)
             }
         }
+    }
+
+    @ViewBuilder private func progressionCard(_ progress: StrengthExerciseProgress?) -> some View {
+        if let progress, progress.current.hasLoadedSet {
+            Divider().overlay(StrandPalette.hairline)
+            HStack {
+                Text("PROGRESSION").strandOverline()
+                Spacer()
+                if progress.newRecordCount > 0 {
+                    Label("\(progress.newRecordCount) NEW PR\(progress.newRecordCount == 1 ? "" : "S")",
+                          systemImage: "star.fill")
+                        .font(StrandFont.footnote)
+                        .foregroundStyle(StrandPalette.metricCyan)
+                }
+            }
+            HStack(alignment: .top, spacing: 8) {
+                progressionMetric("Heaviest", current: progress.current.topWeightKg,
+                                  previous: progress.previous.topWeightKg,
+                                  isRecord: progress.isTopWeightRecord)
+                progressionMetric("Set volume", current: progress.current.bestSetVolumeKg,
+                                  previous: progress.previous.bestSetVolumeKg,
+                                  isRecord: progress.isSetVolumeRecord)
+                progressionMetric("Est. 1RM", current: progress.current.estimatedOneRepMaxKg,
+                                  previous: progress.previous.estimatedOneRepMaxKg,
+                                  isRecord: progress.isEstimatedOneRepMaxRecord)
+            }
+            Text(progress.hasPreviousLoadedSet
+                 ? "Compared with earlier logged sets. Estimated 1RM uses Epley only for sets of 1–12 reps."
+                 : "This is the first loaded mark for this exercise. Estimated 1RM uses Epley for 1–12 reps.")
+                .font(StrandFont.footnote)
+                .foregroundStyle(StrandPalette.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func progressionMetric(_ label: String, current: Double?, previous: Double?,
+                                   isRecord: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label).strandOverline()
+            Text(current.map(progressLoad) ?? "–")
+                .font(StrandFont.number(16))
+                .foregroundStyle(isRecord ? StrandPalette.metricCyan : StrandPalette.textPrimary)
+            Text(progressionComparison(current: current, previous: previous, isRecord: isRecord))
+                .font(StrandFont.footnote)
+                .foregroundStyle(isRecord ? StrandPalette.metricCyan : StrandPalette.textTertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func progressionComparison(current: Double?, previous: Double?, isRecord: Bool) -> String {
+        guard let current else { return "No estimate" }
+        if isRecord, let previous { return "+\(progressLoad(current - previous))" }
+        if isRecord { return "First mark" }
+        if let previous { return "Best \(progressLoad(previous))" }
+        return "No prior mark"
+    }
+
+    private func progressLoad(_ kg: Double) -> String {
+        "\(Self.clean(displayLoad(kg))) \(loadUnit)"
     }
 
     private func strengthNumberField(_ placeholder: String, text: Binding<String>) -> some View {
@@ -392,6 +458,15 @@ struct StrengthWorkoutSheet: View {
         guard built.count == exercises.count else { return nil }
         let workout = StrengthWorkout(exercises: built)
         return workout.isValid ? workout : nil
+    }
+
+    private var strengthProgressByID: [String: StrengthExerciseProgress] {
+        guard let payload else { return [:] }
+        var result: [String: StrengthExerciseProgress] = [:]
+        for progress in StrengthProgression.compare(current: payload, history: historicalWorkouts) {
+            result[progress.id] = progress
+        }
+        return result
     }
 
     private var builtRow: WorkoutRow? {

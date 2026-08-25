@@ -91,6 +91,9 @@ struct WorkoutsView: View {
     /// Dedicated set-level editor. Kept separate from the generic workout form so strength payloads
     /// cannot be accidentally flattened to a note or silently lost during an edit.
     @State private var strengthSheet: WorkoutSheetTarget?
+    /// Full strength history for personal-record comparisons. Seeded from the loaded window so the
+    /// sheet opens immediately, then replaced by a lightweight strength-only history read.
+    @State private var strengthHistoryRows: [WorkoutRow] = []
 
     /// The read-only detail screen target — a tapped session. Drives a `.sheet(item:)` separate from
     /// the add/edit sheet so a primary tap (detail) and the ••• menu (edit) never collide. (#410)
@@ -259,7 +262,8 @@ struct WorkoutsView: View {
             }
         }
         .sheet(item: $strengthSheet) { target in
-            StrengthWorkoutSheet(editing: target.editing) { row, replacing in
+            StrengthWorkoutSheet(editing: target.editing,
+                                 historicalWorkouts: historicalStrengthWorkouts(for: target)) { row, replacing in
                 Task {
                     await repo.saveManualWorkout(row, replacing: target.isCopy ? nil : replacing)
                     // HR-derived fields remain owned by the ordinary analysis path; set volume is not
@@ -453,8 +457,26 @@ struct WorkoutsView: View {
 
     private func editWorkout(_ row: WorkoutRow, isCopy: Bool = false) {
         let target = WorkoutSheetTarget(editing: row, isCopy: isCopy)
-        if StrengthWorkout.decode(row.strengthJSON) != nil { strengthSheet = target }
+        if StrengthWorkout.decode(row.strengthJSON) != nil { presentStrengthSheet(target) }
         else { sheet = target }
+    }
+
+    private func presentStrengthSheet(_ target: WorkoutSheetTarget) {
+        strengthHistoryRows = allRows
+        strengthSheet = target
+        Task {
+            let fullHistory = await repo.strengthWorkoutRows()
+            guard strengthSheet?.id == target.id else { return }
+            strengthHistoryRows = fullHistory
+        }
+    }
+
+    private func historicalStrengthWorkouts(for target: WorkoutSheetTarget) -> [StrengthWorkout] {
+        strengthHistoryRows.compactMap { row in
+            if !target.isCopy, let editing = target.editing,
+               row.startTs == editing.startTs, row.sport == editing.sport { return nil }
+            return StrengthWorkout.decode(row.strengthJSON)
+        }
     }
 
     private func relabel(_ row: WorkoutRow, to sport: String) {
@@ -610,7 +632,7 @@ struct WorkoutsView: View {
 
     private var logStrengthButton: some View {
         NoopButton("Log strength", systemImage: "dumbbell.fill", kind: .secondary, fullWidth: true) {
-            strengthSheet = WorkoutSheetTarget(editing: nil)
+            presentStrengthSheet(WorkoutSheetTarget(editing: nil))
         }
         .accessibilityLabel("Log a strength workout")
     }
