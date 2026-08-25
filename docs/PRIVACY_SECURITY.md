@@ -268,6 +268,13 @@ What this does **not** protect against: an attacker with your unlocked, logged-i
 session, or a backup/Time Machine copy of the container made while FileVault is
 unlocked. The data is plaintext SQLite once the volume is mounted.
 
+On Android, **Settings → Privacy & app lock** can additionally require the phone owner to
+authenticate whenever NOOP leaves the foreground. Android performs the fingerprint/face or
+PIN/pattern/password check; NOOP stores no separate credential. While enabled, Android's
+`FLAG_SECURE` also hides app screenshots and the recent-app preview. This protects access to the app
+UI on an unlocked phone, but it does not encrypt the Room database or defend against a rooted or
+otherwise compromised operating system.
+
 > **Option: SQLCipher.** GRDB supports SQLCipher (an encrypted SQLite build) as a
 > drop-in. Wiring NOOP's `DatabaseQueue` to a SQLCipher build with a
 > Keychain-derived key would give at-rest encryption independent of FileVault. This
@@ -530,6 +537,8 @@ dedicated source id `nutrition-csv`, alongside your other metrics and entirely o
 | CSV import | Zip bomb / oversized entries | 256 MB per-entry cap (declared + running budget); CRC32 verify | `StrandImport/WhoopExportImporter.swift` |
 | CSV import | Arbitrary archive members | Filename allow-list; tolerant optional-column parsing | `StrandImport/WhoopExportImporter.swift` |
 | Data at rest | Disk theft / offline access | Relies on FileVault + sandbox container; SQLCipher available as an option | `WhoopStore/WhoopStore.swift` |
+| Android app UI | Another person using an unlocked phone | Optional OS-backed biometric/device-credential gate on every foreground return; `FLAG_SECURE` blocks screenshots and the recent-app preview; no app PIN is stored | `android/.../ui/AppLock.kt`, `android/.../ui/MainActivity.kt` |
+| Android APK identity | A public/shared signing key allowing untrusted updates | Release builds require a private PKCS#12 keystore and fail closed when it is absent; the generated key and properties are git-ignored, and CI accepts them only through repository secrets | `android/app/build.gradle.kts`, `android/setup-private-signing.ps1` |
 | Diagnostics log | Leaking the strap log to the device-wide system log | In-app ring buffer only; logcat mirroring is **opt-in** (Settings → Strap → "Debug logging", default off); no biometric values / tokens logged (§2.4) | `android/.../ble/WhoopBleClient.kt` (`debugLogcat`), `android/.../ui/MainActivity.kt` (`NoopPrefs`) |
 
 ---

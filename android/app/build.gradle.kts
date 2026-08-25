@@ -6,12 +6,19 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-// Optional release signing. Credentials live in `keystore.properties` (git-ignored, never
-// committed); when it's absent — clones, CI without secrets — release falls back to the debug
-// key so `assembleRelease` always produces an installable APK. See docs/BUILD.md.
+// Private release signing. Credentials live in `keystore.properties` (git-ignored, never committed).
+// Release builds fail closed when it is absent; they must never fall back to a shared/debug key.
+// Run `./setup-private-signing.ps1` once on the machine that will build personal APK updates.
 val keystorePropsFile = rootProject.file("keystore.properties")
 val keystoreProps = Properties().apply {
     if (keystorePropsFile.exists()) keystorePropsFile.inputStream().use { load(it) }
+}
+val requiredSigningProperties = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+val missingSigningProperties = requiredSigningProperties.filter { keystoreProps.getProperty(it).isNullOrBlank() }
+if (keystorePropsFile.exists() && missingSigningProperties.isNotEmpty()) {
+    throw GradleException(
+        "keystore.properties is missing: ${missingSigningProperties.joinToString()}",
+    )
 }
 val isStagingRelease = project.hasProperty("stagingRelease")
 val requestedReleaseBuild = gradle.startParameter.taskNames.any {
@@ -36,18 +43,10 @@ android {
     }
 
     signingConfigs {
-        getByName("debug") {
-            val forkDebugKeystore = rootProject.file("fork-debug.keystore")
-            if (forkDebugKeystore.exists()) {
-                storeFile = forkDebugKeystore
-                storePassword = "android"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
-            }
-        }
         create("release") {
             if (keystorePropsFile.exists()) {
                 storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storeType = "PKCS12"
                 storePassword = keystoreProps.getProperty("storePassword")
                 keyAlias = keystoreProps.getProperty("keyAlias")
                 keyPassword = keystoreProps.getProperty("keyPassword")
@@ -73,20 +72,16 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            if (!keystorePropsFile.exists() && !isStagingRelease && requestedReleaseBuild) {
+            if (!keystorePropsFile.exists() && requestedReleaseBuild) {
                 throw GradleException(
-                    "Refusing to build a real release without keystore.properties. " +
-                        "Use -PstagingRelease for debug-key staging artifacts only."
+                    "Refusing to build a release without private signing. " +
+                        "Run android/setup-private-signing.ps1 first."
                 )
             }
-            // Real release key when keystore.properties is present. The debug-key fallback is allowed
-            // only for explicit fork/staging artifacts that install under their own application id.
-            signingConfig = if (keystorePropsFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            if (keystorePropsFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
             }
-            // Fork staging release: built with -PstagingRelease (the fork testing-build CI only), the
+            // Fork staging release: built with -PstagingRelease, the
             // release APK gets its own id/name so it installs BESIDE both the official app and the
             // .debug staging build. A real release (no property) keeps the true com.noop.whoop id.
             if (isStagingRelease) {
@@ -140,6 +135,21 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+// Aggregate tasks such as `build` do not contain "Release" in the requested task name. Guard the
+// actual packaging tasks too so every path that could produce a release APK fails closed.
+tasks.configureEach {
+    if (name.startsWith("package") && name.endsWith("Release")) {
+        doFirst {
+            if (!keystorePropsFile.exists()) {
+                throw GradleException(
+                    "Refusing to package a release without private signing. " +
+                        "Run android/setup-private-signing.ps1 first.",
+                )
+            }
         }
     }
 }

@@ -27,6 +27,7 @@ Strand.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/*
 build/
 DerivedData/
 .build/
+.tools/
 Packages/*/.build/
 Tools/*/.build/
 *.swiftpm

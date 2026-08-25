@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -51,6 +52,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
@@ -491,6 +493,20 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val live by vm.live.collectAsStateWithLifecycle()
 
+    var appLockEnabled by remember { mutableStateOf(AppLockPrefs.isEnabled(context)) }
+    var phoneScreenLockReady by remember { mutableStateOf(AppLockPrefs.isDeviceSecure(context)) }
+    val settingsLifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(settingsLifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                appLockEnabled = AppLockPrefs.isEnabled(context)
+                phoneScreenLockReady = AppLockPrefs.isDeviceSecure(context)
+            }
+        }
+        settingsLifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { settingsLifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     // The profile store is stable for the lifetime of this screen; a version counter
     // forces recomposition after each mutating write (SharedPreferences isn't reactive).
     val profile = remember { ProfileStore.from(context) }
@@ -847,6 +863,68 @@ fun SettingsScreen(
                     pluralStringResource(R.plurals.settings_streak_longest, streaks.longest, streaks.longest),
                     style = NoopType.footnote, color = Palette.textSecondary,
                 )
+            }
+        }
+
+        SettingsCard(
+            icon = Icons.Filled.Lock,
+            title = "Privacy & app lock",
+            blurb = "Require Android to verify you whenever NOOP leaves the foreground. NOOP never stores a separate PIN.",
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SettingsToggleRow(
+                    title = "Lock NOOP",
+                    detail = "Use your fingerprint, face, or phone PIN/pattern/password. Also hides screenshots and the recent-app preview.",
+                    checked = appLockEnabled,
+                    onCheckedChange = { enable ->
+                        val activity = context.hostingActivity() as? MainActivity
+                        when {
+                            activity == null -> Toast.makeText(
+                                context,
+                                "App lock is unavailable from this screen.",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                            !AppLockPrefs.isDeviceSecure(context) -> {
+                                phoneScreenLockReady = false
+                                Toast.makeText(
+                                    context,
+                                    "Set up your phone screen lock first.",
+                                    Toast.LENGTH_LONG,
+                                ).show()
+                            }
+                            else -> activity.authenticateForAppLock(
+                                title = if (enable) "Turn on NOOP app lock" else "Turn off NOOP app lock",
+                                onSuccess = {
+                                    activity.setAppLockEnabled(enable)
+                                    appLockEnabled = enable
+                                    phoneScreenLockReady = true
+                                    Toast.makeText(
+                                        context,
+                                        if (enable) "NOOP will lock when you leave it." else "NOOP app lock is off.",
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                },
+                                onError = { message ->
+                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                },
+                            )
+                        }
+                    },
+                )
+
+                if (!phoneScreenLockReady) {
+                    SettingsNoteRow(
+                        icon = Icons.Filled.Warning,
+                        iconTint = Palette.strain066,
+                        text = "Your phone does not currently have a secure screen lock. Set one before enabling NOOP app lock.",
+                    )
+                    NoopButton(
+                        text = "Open phone security settings",
+                        kind = NoopButtonKind.Secondary,
+                        fullWidth = true,
+                        onClick = { context.startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS)) },
+                    )
+                }
             }
         }
 

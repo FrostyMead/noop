@@ -1,14 +1,22 @@
 package com.noop.ui
 
 import android.Manifest
+import android.app.Activity
+import android.app.KeyguardManager
+import android.hardware.biometrics.BiometricManager
+import android.hardware.biometrics.BiometricPrompt
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
+import android.os.CancellationSignal
+import android.provider.Settings
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -39,6 +47,12 @@ import kotlinx.coroutines.launch
  */
 class MainActivity : ComponentActivity() {
 
+    private var appLocked by mutableStateOf(false)
+    private var appLockMessage by mutableStateOf<String?>(null)
+    private var authenticationInFlight = false
+    private var credentialSuccess: (() -> Unit)? = null
+    private var credentialError: ((String) -> Unit)? = null
+
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppLanguagePrefs.wrap(newBase))
     }
@@ -49,9 +63,25 @@ class MainActivity : ComponentActivity() {
             // the UI simply reflects connection state. No blocking here.
         }
 
+    private val credentialLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val success = credentialSuccess
+            val error = credentialError
+            credentialSuccess = null
+            credentialError = null
+            authenticationInFlight = false
+            if (result.resultCode == Activity.RESULT_OK) {
+                success?.invoke()
+            } else {
+                error?.invoke("Unlock cancelled.")
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        appLocked = AppLockPrefs.isEnabled(this)
+        syncScreenshotProtection()
         // Load the saved "Card transparency" so every frosted card renders at the chosen opacity from launch.
         CardAppearance.init(this)
 
@@ -106,8 +136,137 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             NoopTheme {
-                NoopRoot()
+                if (appLocked) {
+                    AppLockScreen(
+                        message = appLockMessage,
+                        onUnlock = ::requestAppUnlock,
+                        onOpenPhoneSecurity = {
+                            startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS))
+                        },
+                    )
+                } else {
+                    NoopRoot()
+                }
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        syncScreenshotProtection()
+        if (appLocked && AppLockPrefs.isEnabled(this)) {
+            // Post until the resumed window is ready to own the system authentication surface.
+            window.decorView.post { requestAppUnlock() }
+        }
+    }
+
+    override fun onStop() {
+        if (AppLockPolicy.shouldLockOnStop(AppLockPrefs.isEnabled(this), isChangingConfigurations)) {
+            appLocked = true
+        }
+        super.onStop()
+    }
+
+    /** Persist the setting and immediately protect/unprotect screenshots and the recents preview. */
+    internal fun setAppLockEnabled(enabled: Boolean) {
+        AppLockPrefs.setEnabled(this, enabled)
+        appLocked = false
+        appLockMessage = null
+        syncScreenshotProtection()
+    }
+
+    /**
+     * Ask Android to authenticate the phone owner. NOOP never receives or stores a PIN/password.
+     * Android 10+ can present enrolled biometrics or the device credential; Android 8/9 use the
+     * system credential confirmation screen.
+     */
+    @Suppress("DEPRECATION")
+    internal fun authenticateForAppLock(
+        title: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        if (authenticationInFlight) return
+        val keyguard = getSystemService(KeyguardManager::class.java)
+        if (keyguard?.isDeviceSecure != true) {
+            onError("Set a PIN, pattern, password, or biometric in phone security settings first.")
+            return
+        }
+
+        authenticationInFlight = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            showBiometricOrCredentialPrompt(title, onSuccess, onError)
+        } else {
+            val intent = keyguard.createConfirmDeviceCredentialIntent(
+                title,
+                "Confirm the screen lock for this phone.",
+            )
+            if (intent == null) {
+                authenticationInFlight = false
+                onError("This phone could not open its secure unlock screen.")
+            } else {
+                credentialSuccess = onSuccess
+                credentialError = onError
+                credentialLauncher.launch(intent)
+            }
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun showBiometricOrCredentialPrompt(
+        title: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        val builder = BiometricPrompt.Builder(this)
+            .setTitle(title)
+            .setSubtitle("Use your fingerprint, face, or phone screen lock.")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            builder.setAllowedAuthenticators(
+                BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                    BiometricManager.Authenticators.DEVICE_CREDENTIAL,
+            )
+        } else {
+            builder.setDeviceCredentialAllowed(true)
+        }
+
+        builder.build().authenticate(
+            CancellationSignal(),
+            mainExecutor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult?) {
+                    authenticationInFlight = false
+                    onSuccess()
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence?) {
+                    authenticationInFlight = false
+                    onError(errString?.toString()?.takeIf { it.isNotBlank() } ?: "Unlock cancelled.")
+                }
+            },
+        )
+    }
+
+    private fun requestAppUnlock() {
+        if (!appLocked || !AppLockPrefs.isEnabled(this) || authenticationInFlight) return
+        appLockMessage = null
+        authenticateForAppLock(
+            title = "Unlock NOOP",
+            onSuccess = {
+                appLockMessage = null
+                appLocked = false
+            },
+            onError = { appLockMessage = it },
+        )
+    }
+
+    private fun syncScreenshotProtection() {
+        if (AppLockPrefs.isEnabled(this)) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         }
     }
 

@@ -175,9 +175,21 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/wrapper-validation@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
-      # Release-only (no debug APK). Signed with the committed fork-debug.keystore via the debug
-      # signingConfig storeFile (release falls back to it when no keystore.properties is present);
-      # -PstagingRelease gives it the .staging app id so it installs beside the official app.
+      - name: Configure private Android signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: |
+          for value in KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            [ -n "${!value}" ] || { echo "::error::Missing Android signing secret: $value"; exit 1; }
+          done
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > private-release.keystore
+          printf 'storeFile=private-release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
+      # -PstagingRelease keeps the fork APK beside the canonical app, but it is still signed with this
+      # fork owner's private release key. There is no shared/debug-key fallback.
       - name: Build staging-release APK
         run: ./gradlew assembleFullRelease -PstagingRelease
       - name: Version the filename + attach
