@@ -30,6 +30,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.noop.data.StrengthExercise
+import com.noop.data.StrengthRoutine
+import com.noop.data.StrengthRoutineLibrary
 import com.noop.data.StrengthSet
 import com.noop.data.StrengthWorkout
 import com.noop.data.WorkoutRow
@@ -50,6 +52,18 @@ internal fun StrengthWorkoutDialog(
     val unitSystem = UnitPrefs.system(context)
     val imperial = unitSystem == UnitSystem.IMPERIAL
     val unit = if (imperial) "lb" else "kg"
+    val routinePrefs = remember(context) { NoopPrefs.of(context) }
+    var routineLibrary by remember {
+        mutableStateOf(
+            StrengthRoutineLibrary.decode(routinePrefs.getString(StrengthRoutineLibrary.PREFS_KEY, null))
+                ?: StrengthRoutineLibrary(),
+        )
+    }
+    var loadedRoutineID by remember { mutableStateOf<String?>(null) }
+    var showRoutinePicker by remember { mutableStateOf(false) }
+    var showSaveRoutine by remember { mutableStateOf(false) }
+    var routineName by remember { mutableStateOf("") }
+    var routineError by remember { mutableStateOf<String?>(null) }
     val now = System.currentTimeMillis()
     var startMillis by remember(editing?.startTs) {
         mutableStateOf(editing?.startTs?.times(1000) ?: now - 45 * 60 * 1000)
@@ -130,6 +144,41 @@ internal fun StrengthWorkoutDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                 )
+
+                NoopCard {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("ROUTINES", style = NoopType.overline, color = Palette.textTertiary)
+                                Text(
+                                    if (routineLibrary.routines.isEmpty()) "Save this layout to reuse it later."
+                                    else "Load a saved layout or update the current one.",
+                                    style = NoopType.footnote, color = Palette.textSecondary,
+                                )
+                            }
+                            Text("${routineLibrary.routines.size}/${StrengthRoutineLibrary.MAX_ROUTINES}",
+                                style = NoopType.captionNumber, color = Palette.textTertiary)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                onClick = { showRoutinePicker = true },
+                                enabled = routineLibrary.routines.isNotEmpty(),
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Load routine") }
+                            OutlinedButton(
+                                onClick = {
+                                    val loaded = routineLibrary.routines.firstOrNull { it.id == loadedRoutineID }
+                                    if (loaded != null) routineName = loaded.name
+                                    else if (routineName.isEmpty()) routineName = "My routine"
+                                    routineError = null
+                                    showSaveRoutine = true
+                                },
+                                enabled = payload != null,
+                                modifier = Modifier.weight(1f),
+                            ) { Text(if (loadedRoutineID == null) "Save routine" else "Update routine") }
+                        }
+                    }
+                }
 
                 exercises.forEachIndexed { exerciseIndex, exercise ->
                     NoopCard {
@@ -258,6 +307,111 @@ internal fun StrengthWorkoutDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+
+    if (showRoutinePicker) {
+        AlertDialog(
+            onDismissRequest = { showRoutinePicker = false },
+            containerColor = Palette.surfaceOverlay,
+            title = { Text("Strength routines", style = NoopType.title2, color = Palette.textPrimary) },
+            text = {
+                Column(
+                    modifier = Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    routineLibrary.routines.forEach { routine ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Text(routine.name, style = NoopType.body, color = Palette.textPrimary,
+                                modifier = Modifier.weight(1f))
+                            TextButton(onClick = {
+                                val displayFactor = if (imperial) POUNDS_PER_KG else 1.0
+                                exercises = routine.exercises.map { exercise ->
+                                    ExerciseDraft(
+                                        UUID.randomUUID().toString(), exercise.name,
+                                        exercise.sets.map { set ->
+                                            SetDraft(UUID.randomUUID().toString(), set.reps.toString(),
+                                                set.weightKg?.let { cleanLoad(it * displayFactor) } ?: "",
+                                                set.isWarmup)
+                                        },
+                                    )
+                                }
+                                loadedRoutineID = routine.id
+                                routineName = routine.name
+                                showRoutinePicker = false
+                            }) { Text("Load") }
+                            TextButton(onClick = {
+                                val next = routineLibrary.removing(routine.id)
+                                routinePrefs.edit().putString(StrengthRoutineLibrary.PREFS_KEY, next.encodedJSON()).apply()
+                                routineLibrary = next
+                                if (loadedRoutineID == routine.id) {
+                                    loadedRoutineID = null
+                                    routineName = ""
+                                }
+                                if (next.routines.isEmpty()) showRoutinePicker = false
+                            }) { Text("Delete", color = Palette.statusCritical) }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showRoutinePicker = false }) { Text("Done") } },
+        )
+    }
+
+    if (showSaveRoutine) {
+        AlertDialog(
+            onDismissRequest = { showSaveRoutine = false; routineError = null },
+            containerColor = Palette.surfaceOverlay,
+            title = { Text("Save Routine", style = NoopType.title2, color = Palette.textPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = routineName,
+                        onValueChange = { routineName = it; routineError = null },
+                        label = { Text("Routine name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        routineError ?: "Save these exercises, sets, reps and loads for a future workout.",
+                        style = NoopType.footnote,
+                        color = if (routineError == null) Palette.textSecondary else Palette.statusWarning,
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = save@{
+                        val current = payload ?: return@save
+                        val name = routineName.trim()
+                        if (name.isEmpty()) return@save
+                        val matchingID = routineLibrary.routines.firstOrNull {
+                            it.name.equals(name, ignoreCase = true)
+                        }?.id
+                        val routine = StrengthRoutine(
+                            loadedRoutineID ?: matchingID ?: UUID.randomUUID().toString(),
+                            name,
+                            current.exercises,
+                        )
+                        val next = routineLibrary.upserting(routine)
+                        val json = next?.encodedJSON()
+                        if (next == null || json == null) {
+                            routineError = "Use a 1–80 character name. NOOP keeps at most ${StrengthRoutineLibrary.MAX_ROUTINES} routines in the bounded backup library."
+                            return@save
+                        }
+                        routinePrefs.edit().putString(StrengthRoutineLibrary.PREFS_KEY, json).apply()
+                        routineLibrary = next
+                        loadedRoutineID = routine.id
+                        routineName = routine.name
+                        routineError = null
+                        showSaveRoutine = false
+                    },
+                    enabled = routineName.trim().isNotEmpty() && payload != null,
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSaveRoutine = false; routineError = null }) { Text("Cancel") }
+            },
+        )
+    }
 }
 
 @Composable

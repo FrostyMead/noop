@@ -17,6 +17,11 @@ struct StrengthWorkoutSheet: View {
     @State private var start: Date
     @State private var durationMin: Int
     @State private var exercises: [ExerciseDraft]
+    @State private var routineLibrary: StrengthRoutineLibrary
+    @State private var loadedRoutineID: String?
+    @State private var showSaveRoutine = false
+    @State private var routineName = ""
+    @State private var routineError: String?
 
     private static let poundsPerKilogram = 2.204_622_621_8
 
@@ -40,6 +45,10 @@ struct StrengthWorkoutSheet: View {
                          isWarmup: set.isWarmup)
             })
         } ?? [ExerciseDraft.blank()])
+        _routineLibrary = State(initialValue:
+            StrengthRoutineLibrary.decode(UserDefaults.standard.string(forKey: StrengthRoutineLibrary.storageKey))
+            ?? StrengthRoutineLibrary())
+        _loadedRoutineID = State(initialValue: nil)
     }
 
     var body: some View {
@@ -60,6 +69,8 @@ struct StrengthWorkoutSheet: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
+
+                routineControls
 
                 ForEach($exercises) { $exercise in
                     exerciseCard($exercise)
@@ -87,6 +98,14 @@ struct StrengthWorkoutSheet: View {
         .frame(maxWidth: .infinity)
         .noopSheetPresentation(largeFirst: true)
         #endif
+        .alert("Save Routine", isPresented: $showSaveRoutine) {
+            TextField("Routine name", text: $routineName)
+            Button("Cancel", role: .cancel) { routineError = nil }
+            Button("Save") { saveRoutine() }
+                .disabled(routineName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || payload == nil)
+        } message: {
+            Text(routineError ?? "Save these exercises, sets, reps and loads for a future workout.")
+        }
     }
 
     private var header: some View {
@@ -104,6 +123,64 @@ struct StrengthWorkoutSheet: View {
                     .font(StrandFont.subhead).foregroundStyle(StrandPalette.textSecondary)
             }
             Spacer()
+        }
+    }
+
+    private var routineControls: some View {
+        NoopCard(tint: StrandPalette.metricCyan) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("ROUTINES").strandOverline()
+                        Text(routineLibrary.routines.isEmpty
+                             ? "Save this layout to reuse it later."
+                             : "Load a saved layout or update the current one.")
+                            .font(StrandFont.footnote).foregroundStyle(StrandPalette.textSecondary)
+                    }
+                    Spacer()
+                    Text("\(routineLibrary.routines.count)/\(StrengthRoutineLibrary.maximumRoutineCount)")
+                        .font(StrandFont.captionNumber).foregroundStyle(StrandPalette.textTertiary)
+                }
+                HStack(spacing: 10) {
+                    Menu {
+                        ForEach(routineLibrary.routines) { routine in
+                            Button(routine.name) { loadRoutine(routine) }
+                        }
+                    } label: {
+                        Label("Load routine", systemImage: "list.bullet.rectangle")
+                            .font(StrandFont.footnote).foregroundStyle(StrandPalette.textPrimary)
+                            .frame(maxWidth: .infinity).padding(.vertical, 9)
+                            .background(StrandPalette.surfaceInset, in: inputShape)
+                    }
+                    .disabled(routineLibrary.routines.isEmpty)
+
+                    NoopButton(loadedRoutineID == nil ? "Save routine" : "Update routine",
+                               systemImage: "square.and.arrow.down", kind: .secondary) {
+                        if let id = loadedRoutineID,
+                           let routine = routineLibrary.routines.first(where: { $0.id == id }) {
+                            routineName = routine.name
+                        } else if routineName.isEmpty {
+                            routineName = "My routine"
+                        }
+                        routineError = nil
+                        showSaveRoutine = true
+                    }
+                    .disabled(payload == nil)
+
+                    Menu {
+                        ForEach(routineLibrary.routines) { routine in
+                            Button("Delete \(routine.name)", role: .destructive) { deleteRoutine(routine) }
+                        }
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundStyle(routineLibrary.routines.isEmpty
+                                             ? StrandPalette.textTertiary : StrandPalette.statusCritical)
+                            .frame(width: 36, height: 36)
+                    }
+                    .disabled(routineLibrary.routines.isEmpty)
+                    .accessibilityLabel("Delete a strength routine")
+                }
+            }
         }
     }
 
@@ -272,6 +349,52 @@ struct StrengthWorkoutSheet: View {
     private func removeExercise(_ id: String) {
         guard exercises.count > 1 else { return }
         exercises.removeAll { $0.id == id }
+    }
+
+    private func loadRoutine(_ routine: StrengthRoutine) {
+        let displayFactor = unitSystem == .imperial ? Self.poundsPerKilogram : 1
+        exercises = routine.exercises.map { exercise in
+            ExerciseDraft(id: UUID().uuidString, name: exercise.name, sets: exercise.sets.map { set in
+                SetDraft(id: UUID().uuidString, reps: String(set.reps),
+                         weight: set.weightKg.map { Self.clean($0 * displayFactor) } ?? "",
+                         isWarmup: set.isWarmup)
+            })
+        }
+        loadedRoutineID = routine.id
+        routineName = routine.name
+    }
+
+    private func saveRoutine() {
+        guard let payload else { return }
+        let name = routineName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        let matchingID = routineLibrary.routines.first {
+            $0.name.caseInsensitiveCompare(name) == .orderedSame
+        }?.id
+        let routine = StrengthRoutine(id: loadedRoutineID ?? matchingID ?? UUID().uuidString,
+                                      name: name, exercises: payload.exercises)
+        guard let next = routineLibrary.upserting(routine), let json = next.encodedJSON() else {
+            routineError = "Use a 1–80 character name. NOOP keeps at most \(StrengthRoutineLibrary.maximumRoutineCount) routines in the bounded backup library."
+            showSaveRoutine = true
+            return
+        }
+        UserDefaults.standard.set(json, forKey: StrengthRoutineLibrary.storageKey)
+        routineLibrary = next
+        loadedRoutineID = routine.id
+        routineName = routine.name
+        routineError = nil
+    }
+
+    private func deleteRoutine(_ routine: StrengthRoutine) {
+        let next = routineLibrary.removing(id: routine.id)
+        if let json = next.encodedJSON() {
+            UserDefaults.standard.set(json, forKey: StrengthRoutineLibrary.storageKey)
+        }
+        routineLibrary = next
+        if loadedRoutineID == routine.id {
+            loadedRoutineID = nil
+            routineName = ""
+        }
     }
 
     private func save() {

@@ -41,6 +41,7 @@ class BackupSettingsCodecTest {
             "effort.scale" to "whoop",
             // #today-hosted-cards: the one layout pref carried, a JSON [String] stored under the String kind.
             "today.hostedCards" to "[\"sleep.sleepMarks\"]",
+            "strength.routines" to """{"routines":[],"version":1}""",
             // #1361: custom journal behaviours, a newline-joined name list — the embedded newline must
             // survive the JSON round-trip (and stay byte-identical to the Apple value).
             "journal.customBehaviors" to "Cold plunge\nMagnesium",
@@ -59,6 +60,7 @@ class BackupSettingsCodecTest {
         assertEquals("celsius", back["units.temperature"])
         assertEquals("whoop", back["effort.scale"])
         assertEquals("[\"sleep.sleepMarks\"]", back["today.hostedCards"])
+        assertEquals("""{"routines":[],"version":1}""", back["strength.routines"])
         assertEquals("Cold plunge\nMagnesium", back["journal.customBehaviors"])
         assertEquals(values.size, back.size)
     }
