@@ -2537,7 +2537,8 @@ final class Repository: ObservableObject {
             return WorkoutRow(startTs: row.startTs, endTs: row.endTs, sport: row.sport,
                               source: row.source, durationS: row.durationS, energyKcal: row.energyKcal,
                               avgHr: r.avg, maxHr: newMax, strain: newStrain, distanceM: row.distanceM,
-                              zonesJSON: row.zonesJSON, notes: row.notes, steps: row.steps)
+                              zonesJSON: row.zonesJSON, notes: row.notes, steps: row.steps,
+                              strengthJSON: row.strengthJSON)
         }
     }
 
@@ -2621,7 +2622,7 @@ final class Repository: ObservableObject {
                                 durationS: row.durationS, energyKcal: row.energyKcal,
                                 avgHr: row.avgHr, maxHr: row.maxHr, strain: row.strain,
                                 distanceM: row.distanceM, zonesJSON: row.zonesJSON, notes: row.notes,
-                                steps: row.steps)
+                                steps: row.steps, strengthJSON: row.strengthJSON)
         _ = try? await store.upsertWorkouts([manual], deviceId: deviceId)
         _ = try? await store.deleteWorkouts(deviceId: computedDeviceId, sport: "detected",
                                             from: row.startTs, to: row.startTs)

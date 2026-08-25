@@ -170,7 +170,7 @@ final class JournalWorkoutAppleCacheTests: XCTestCase {
         let w = WorkoutRow(startTs: 1_000, endTs: 4_600, sport: "run", source: "apple",
                            durationS: 3600, energyKcal: 520.5, avgHr: 148, maxHr: 176,
                            strain: 12.4, distanceM: 8000, zonesJSON: "{\"z1\":10,\"z2\":40}",
-                           notes: "easy", steps: nil)
+                           notes: "easy", steps: nil, strengthJSON: nil)
         try await store.upsertWorkouts([w], deviceId: "devA")
 
         var rows = try await store.workouts(deviceId: "devA", from: 0, to: 100_000, limit: 100)
@@ -180,7 +180,8 @@ final class JournalWorkoutAppleCacheTests: XCTestCase {
         // Re-upsert same natural key with updated values → no duplicate, value updated.
         let w2 = WorkoutRow(startTs: 1_000, endTs: 5_000, sport: "run", source: "whoop",
                             durationS: 4000, energyKcal: 600, avgHr: 150, maxHr: 180,
-                            strain: 14.0, distanceM: 9000, zonesJSON: nil, notes: nil, steps: nil)
+                            strain: 14.0, distanceM: 9000, zonesJSON: nil, notes: nil, steps: nil,
+                            strengthJSON: nil)
         try await store.upsertWorkouts([w2], deviceId: "devA")
         rows = try await store.workouts(deviceId: "devA", from: 0, to: 100_000, limit: 100)
         XCTAssertEqual(rows.count, 1, "same (deviceId,startTs,sport) must not duplicate")
@@ -194,10 +195,10 @@ final class JournalWorkoutAppleCacheTests: XCTestCase {
         try await store.upsertWorkouts([
             WorkoutRow(startTs: 1_000, endTs: 2_000, sport: "run", source: "apple",
                        durationS: nil, energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil,
-                       distanceM: nil, zonesJSON: nil, notes: nil, steps: nil),
+                       distanceM: nil, zonesJSON: nil, notes: nil, steps: nil, strengthJSON: nil),
             WorkoutRow(startTs: 1_000, endTs: 2_000, sport: "cycle", source: "apple",
                        durationS: nil, energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil,
-                       distanceM: nil, zonesJSON: nil, notes: nil, steps: nil),
+                       distanceM: nil, zonesJSON: nil, notes: nil, steps: nil, strengthJSON: nil),
         ], deviceId: "devA")
         let rows = try await store.workouts(deviceId: "devA", from: 0, to: 100_000, limit: 100)
         XCTAssertEqual(rows.count, 2, "same startTs but different sport are distinct rows")
@@ -209,11 +210,30 @@ final class JournalWorkoutAppleCacheTests: XCTestCase {
         let store = try await WhoopStore.inMemory()
         let w = WorkoutRow(startTs: 1_000, endTs: 4_600, sport: "run", source: "activity-file",
                            durationS: nil, energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil,
-                           distanceM: nil, zonesJSON: nil, notes: nil, steps: 3_000)
+                           distanceM: nil, zonesJSON: nil, notes: nil, steps: 3_000, strengthJSON: nil)
         try await store.upsertWorkouts([w], deviceId: "activity-file")
         let rows = try await store.workouts(deviceId: "activity-file", from: 0, to: 100_000, limit: 100)
         XCTAssertEqual(rows.count, 1)
         XCTAssertEqual(rows[0].steps, 3_000)
+    }
+
+    func testStrengthWorkoutJSONRoundTrip() async throws {
+        let store = try await WhoopStore.inMemory()
+        let strength = StrengthWorkout(exercises: [
+            StrengthExercise(id: "squat", name: "Back Squat", sets: [
+                StrengthSet(id: "set-1", reps: 5, weightKg: 100, isWarmup: false),
+            ]),
+        ])
+        let json = try XCTUnwrap(strength.encodedJSON())
+        let row = WorkoutRow(startTs: 1_000, endTs: 4_600, sport: "Strength Training", source: "manual",
+                             durationS: 3_600, energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil,
+                             distanceM: nil, zonesJSON: nil, notes: nil, steps: nil, strengthJSON: json)
+        try await store.upsertWorkouts([row], deviceId: "devA")
+
+        let rows = try await store.workouts(deviceId: "devA", from: 0, to: 10_000, limit: 10)
+        let saved = try XCTUnwrap(rows.first)
+        XCTAssertEqual(saved, row)
+        XCTAssertEqual(StrengthWorkout.decode(saved.strengthJSON), strength)
     }
 
     func testSumWorkoutStepsAddsAcrossSameDaySessionsAndIsIdempotent() async throws {
@@ -223,10 +243,10 @@ final class JournalWorkoutAppleCacheTests: XCTestCase {
         let store = try await WhoopStore.inMemory()
         let morning = WorkoutRow(startTs: 10_000, endTs: 12_000, sport: "walk", source: "activity-file",
                                  durationS: nil, energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil,
-                                 distanceM: nil, zonesJSON: nil, notes: nil, steps: 3_000)
+                                 distanceM: nil, zonesJSON: nil, notes: nil, steps: 3_000, strengthJSON: nil)
         let evening = WorkoutRow(startTs: 60_000, endTs: 63_000, sport: "walk", source: "activity-file",
                                  durationS: nil, energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil,
-                                 distanceM: nil, zonesJSON: nil, notes: nil, steps: 8_834)
+                                 distanceM: nil, zonesJSON: nil, notes: nil, steps: 8_834, strengthJSON: nil)
 
         try await store.upsertWorkouts([morning], deviceId: "activity-file")
         var total = try await store.sumWorkoutSteps(deviceId: "activity-file", from: 0, to: 86_400)
@@ -248,20 +268,20 @@ final class JournalWorkoutAppleCacheTests: XCTestCase {
             // a cycling session that day — no steps, must not affect the total or crash the SUM
             WorkoutRow(startTs: 20_000, endTs: 22_000, sport: "cycle", source: "activity-file",
                        durationS: nil, energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil,
-                       distanceM: nil, zonesJSON: nil, notes: nil, steps: nil),
+                       distanceM: nil, zonesJSON: nil, notes: nil, steps: nil, strengthJSON: nil),
             WorkoutRow(startTs: 30_000, endTs: 32_000, sport: "walk", source: "activity-file",
                        durationS: nil, energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil,
-                       distanceM: nil, zonesJSON: nil, notes: nil, steps: 5_000),
+                       distanceM: nil, zonesJSON: nil, notes: nil, steps: 5_000, strengthJSON: nil),
             // next day — outside the range
             WorkoutRow(startTs: 90_000, endTs: 92_000, sport: "walk", source: "activity-file",
                        durationS: nil, energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil,
-                       distanceM: nil, zonesJSON: nil, notes: nil, steps: 9_999),
+                       distanceM: nil, zonesJSON: nil, notes: nil, steps: 9_999, strengthJSON: nil),
         ], deviceId: "activity-file")
         // a different source with steps that day — must not bleed into the activity-file total
         try await store.upsertWorkouts([
             WorkoutRow(startTs: 40_000, endTs: 42_000, sport: "walk", source: "apple",
                        durationS: nil, energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil,
-                       distanceM: nil, zonesJSON: nil, notes: nil, steps: 7_777),
+                       distanceM: nil, zonesJSON: nil, notes: nil, steps: 7_777, strengthJSON: nil),
         ], deviceId: "apple-health")
 
         let total = try await store.sumWorkoutSteps(deviceId: "activity-file", from: 0, to: 86_400)
@@ -272,7 +292,7 @@ final class JournalWorkoutAppleCacheTests: XCTestCase {
         let store = try await WhoopStore.inMemory()
         let w = WorkoutRow(startTs: 50, endTs: 60, sport: "yoga", source: "apple",
                            durationS: nil, energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil,
-                           distanceM: nil, zonesJSON: nil, notes: nil, steps: nil)
+                           distanceM: nil, zonesJSON: nil, notes: nil, steps: nil, strengthJSON: nil)
         try await store.upsertWorkouts([w], deviceId: "devA")
         let rows = try await store.workouts(deviceId: "devA", from: 0, to: 100, limit: 10)
         XCTAssertEqual(rows.count, 1)
@@ -287,13 +307,13 @@ final class JournalWorkoutAppleCacheTests: XCTestCase {
         try await store.upsertWorkouts([
             WorkoutRow(startTs: 100, endTs: 200, sport: "run", source: "a", durationS: nil,
                        energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil, distanceM: nil,
-                       zonesJSON: nil, notes: nil, steps: nil),
+                       zonesJSON: nil, notes: nil, steps: nil, strengthJSON: nil),
             WorkoutRow(startTs: 500, endTs: 600, sport: "run", source: "a", durationS: nil,
                        energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil, distanceM: nil,
-                       zonesJSON: nil, notes: nil, steps: nil),
+                       zonesJSON: nil, notes: nil, steps: nil, strengthJSON: nil),
             WorkoutRow(startTs: 900, endTs: 1000, sport: "run", source: "a", durationS: nil,
                        energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil, distanceM: nil,
-                       zonesJSON: nil, notes: nil, steps: nil),
+                       zonesJSON: nil, notes: nil, steps: nil, strengthJSON: nil),
         ], deviceId: "devA")
         let ranged = try await store.workouts(deviceId: "devA", from: 400, to: 1000, limit: 100)
         XCTAssertEqual(ranged.map { $0.startTs }, [500, 900])
@@ -309,7 +329,7 @@ final class JournalWorkoutAppleCacheTests: XCTestCase {
         func row(_ ts: Int, _ sport: String) -> WorkoutRow {
             WorkoutRow(startTs: ts, endTs: ts + 600, sport: sport, source: "devA-noop",
                        durationS: 600, energyKcal: nil, avgHr: nil, maxHr: nil, strain: nil,
-                       distanceM: nil, zonesJSON: nil, notes: nil, steps: nil)
+                       distanceM: nil, zonesJSON: nil, notes: nil, steps: nil, strengthJSON: nil)
         }
         try await store.upsertWorkouts([row(1_000, "detected"), row(2_000, "detected"),
                                         row(1_500, "run")], deviceId: "devA-noop")

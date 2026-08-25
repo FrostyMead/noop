@@ -868,6 +868,15 @@ extension WhoopStore {
                 t.primaryKey(["deviceId", "ts"])
             }
         }
+        // v39-strength-workout: versioned set-level strength log attached to a workout. Nullable and
+        // additive so all existing/imported workouts remain byte-for-byte untouched. The payload is
+        // interpreted by `StrengthWorkout`; keeping it as JSON lets the set schema evolve independently
+        // while backups continue to carry one self-contained workout row.
+        migrator.registerMigration("v39-strength-workout") { db in
+            try db.alter(table: "workout") { t in
+                t.add(column: "strengthJSON", .text)
+            }
+        }
         return migrator
     }
 }
