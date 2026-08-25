@@ -38,4 +38,40 @@ class StrengthWorkoutTest {
         assertNull(StrengthWorkout.decode("{\"version\":1,\"exercises\":[]}"))
         assertNull(StrengthWorkout.decode("not json"))
     }
+
+    @Test fun progressionMatchesNamesAndFindsOnlyRealImprovements() {
+        val current = StrengthWorkout(exercises = listOf(
+            StrengthExercise("current-bench", "  BENCH   press ", listOf(
+                StrengthSet("heavy", 6, 65.0, false),
+            )),
+            StrengthExercise("squat", "Squat", listOf(
+                StrengthSet("first", 5, 80.0, false),
+            )),
+        ))
+        val history = StrengthWorkout(exercises = listOf(
+            StrengthExercise("old-bench", "Bench Press", listOf(
+                StrengthSet("warmup", 1, 100.0, true),
+                StrengthSet("volume", 8, 60.0, false),
+            )),
+        ))
+
+        val progress = StrengthProgression.compare(current, listOf(history))
+        val bench = progress.first { it.exerciseID == "current-bench" }
+        assertTrue(bench.isTopWeightRecord)
+        assertTrue(!bench.isSetVolumeRecord)
+        assertTrue(bench.isEstimatedOneRepMaxRecord)
+        assertTrue(bench.hasPreviousLoadedSet)
+
+        val squat = progress.first { it.exerciseID == "squat" }
+        assertEquals(3, squat.newRecordCount)
+        assertTrue(!squat.hasPreviousLoadedSet)
+    }
+
+    @Test fun estimatedOneRepMaxIsBoundedAndTransparent() {
+        assertEquals(100.0, StrengthProgression.estimatedOneRepMaxKg(100.0, 1)!!, 0.001)
+        assertEquals(80.0, StrengthProgression.estimatedOneRepMaxKg(60.0, 10)!!, 0.001)
+        assertNull(StrengthProgression.estimatedOneRepMaxKg(60.0, 13))
+        assertNull(StrengthProgression.estimatedOneRepMaxKg(0.0, 5))
+        assertEquals("bench press", StrengthProgression.normalizedExerciseName("  Bench\t Press  "))
+    }
 }

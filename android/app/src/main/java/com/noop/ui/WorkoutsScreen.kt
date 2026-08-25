@@ -396,6 +396,12 @@ fun WorkoutsScreen(vm: AppViewModel) {
         StrengthWorkoutDialog(
             editing = target.editing,
             isCopy = target.isCopy,
+            historicalWorkouts = allRows.mapNotNull { row ->
+                val editing = target.editing
+                if (!target.isCopy && editing != null &&
+                    row.startTs == editing.startTs && row.sport == editing.sport
+                ) null else StrengthWorkout.decode(row.strengthJSON)
+            },
             onDismiss = { strengthDialog = null },
             onSave = { row, replacing ->
                 vm.saveManualWorkout(row, replacing)

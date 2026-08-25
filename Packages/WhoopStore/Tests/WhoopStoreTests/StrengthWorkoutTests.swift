@@ -32,4 +32,42 @@ final class StrengthWorkoutTests: XCTestCase {
         XCTAssertNil(StrengthWorkout.decode(#"{"version":1,"exercises":[]}"#))
         XCTAssertNil(StrengthWorkout.decode("not json"))
     }
+
+    func testProgressionMatchesNamesAndFindsOnlyRealImprovements() throws {
+        let current = StrengthWorkout(exercises: [
+            StrengthExercise(id: "current-bench", name: "  BENCH   press ", sets: [
+                StrengthSet(id: "heavy", reps: 6, weightKg: 65, isWarmup: false),
+            ]),
+            StrengthExercise(id: "squat", name: "Squat", sets: [
+                StrengthSet(id: "first", reps: 5, weightKg: 80, isWarmup: false),
+            ]),
+        ])
+        let history = StrengthWorkout(exercises: [
+            StrengthExercise(id: "old-bench", name: "Bench Press", sets: [
+                StrengthSet(id: "warmup", reps: 1, weightKg: 100, isWarmup: true),
+                StrengthSet(id: "volume", reps: 8, weightKg: 60, isWarmup: false),
+            ]),
+        ])
+
+        let progress = StrengthProgression.compare(current: current, history: [history])
+        let bench = try XCTUnwrap(progress.first { $0.exerciseID == "current-bench" })
+        XCTAssertTrue(bench.isTopWeightRecord)
+        XCTAssertFalse(bench.isSetVolumeRecord, "390 kg does not beat the earlier 480 kg set")
+        XCTAssertTrue(bench.isEstimatedOneRepMaxRecord)
+        XCTAssertTrue(bench.hasPreviousLoadedSet)
+
+        let squat = try XCTUnwrap(progress.first { $0.exerciseID == "squat" })
+        XCTAssertEqual(squat.newRecordCount, 3, "A first loaded entry establishes all three records")
+        XCTAssertFalse(squat.hasPreviousLoadedSet)
+    }
+
+    func testEstimatedOneRepMaxIsBoundedAndTransparent() throws {
+        XCTAssertEqual(try XCTUnwrap(StrengthProgression.estimatedOneRepMaxKg(weightKg: 100, reps: 1)),
+                       100, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(StrengthProgression.estimatedOneRepMaxKg(weightKg: 60, reps: 10)),
+                       80, accuracy: 0.001)
+        XCTAssertNil(StrengthProgression.estimatedOneRepMaxKg(weightKg: 60, reps: 13))
+        XCTAssertNil(StrengthProgression.estimatedOneRepMaxKg(weightKg: 0, reps: 5))
+        XCTAssertEqual(StrengthProgression.normalizedExerciseName("  Bench\t Press  "), "bench press")
+    }
 }

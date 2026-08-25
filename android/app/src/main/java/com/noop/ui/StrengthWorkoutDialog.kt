@@ -31,9 +31,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.noop.data.StrengthExercise
+import com.noop.data.StrengthExerciseProgress
 import com.noop.data.StrengthRoutine
 import com.noop.data.StrengthRoutineLibrary
 import com.noop.data.StrengthRestTimer
+import com.noop.data.StrengthProgression
 import com.noop.data.StrengthSet
 import com.noop.data.StrengthWorkout
 import com.noop.data.WorkoutRow
@@ -48,6 +50,7 @@ import kotlinx.coroutines.delay
 internal fun StrengthWorkoutDialog(
     editing: WorkoutRow?,
     isCopy: Boolean,
+    historicalWorkouts: List<StrengthWorkout> = emptyList(),
     onDismiss: () -> Unit,
     onSave: (WorkoutRow, WorkoutRow?) -> Unit,
 ) {
@@ -141,6 +144,9 @@ internal fun StrengthWorkoutDialog(
         ) ?: return@run null
         WorkoutEditing.preservingCaptured(base, editing).copy(strengthJSON = json)
     }
+    val progressionByExercise = payload?.let {
+        StrengthProgression.compare(it, historicalWorkouts).associateBy { progress -> progress.exerciseID }
+    }.orEmpty()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -353,6 +359,8 @@ internal fun StrengthWorkoutDialog(
                                     ) else value
                                 }
                             }) { Text("Add set") }
+
+                            StrengthProgressCard(progressionByExercise[exercise.id], imperial)
                         }
                     }
                 }
@@ -541,6 +549,77 @@ private fun SummaryValue(label: String, value: String, modifier: Modifier = Modi
     }
 }
 
+@Composable
+private fun StrengthProgressCard(progress: StrengthExerciseProgress?, imperial: Boolean) {
+    if (progress == null || !progress.current.hasLoadedSet) return
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text("PROGRESSION", style = NoopType.overline, color = Palette.textTertiary,
+                modifier = Modifier.weight(1f))
+            if (progress.newRecordCount > 0) {
+                Text(
+                    "★ ${progress.newRecordCount} NEW PR${if (progress.newRecordCount == 1) "" else "S"}",
+                    style = NoopType.footnote,
+                    color = Palette.metricCyan,
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            StrengthProgressValue(
+                "Heaviest", progress.current.topWeightKg, progress.previous.topWeightKg,
+                progress.isTopWeightRecord, imperial, Modifier.weight(1f),
+            )
+            StrengthProgressValue(
+                "Set volume", progress.current.bestSetVolumeKg, progress.previous.bestSetVolumeKg,
+                progress.isSetVolumeRecord, imperial, Modifier.weight(1f),
+            )
+            StrengthProgressValue(
+                "Est. 1RM", progress.current.estimatedOneRepMaxKg,
+                progress.previous.estimatedOneRepMaxKg,
+                progress.isEstimatedOneRepMaxRecord, imperial, Modifier.weight(1f),
+            )
+        }
+        Text(
+            if (progress.hasPreviousLoadedSet)
+                "Compared with earlier logged sets. Estimated 1RM uses Epley only for sets of 1–12 reps."
+            else "This is the first loaded mark for this exercise. Estimated 1RM uses Epley for 1–12 reps.",
+            style = NoopType.footnote,
+            color = Palette.textTertiary,
+        )
+    }
+}
+
+@Composable
+private fun StrengthProgressValue(
+    label: String,
+    current: Double?,
+    previous: Double?,
+    isRecord: Boolean,
+    imperial: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Text(label, style = NoopType.overline, color = Palette.textTertiary)
+        Text(
+            current?.let { progressLoad(it, imperial) } ?: "–",
+            style = NoopType.number(16f),
+            color = if (isRecord) Palette.metricCyan else Palette.textPrimary,
+        )
+        val comparison = when {
+            current == null -> "No estimate"
+            isRecord && previous != null -> "+${progressLoad(current - previous, imperial)}"
+            isRecord -> "First mark"
+            previous != null -> "Best ${progressLoad(previous, imperial)}"
+            else -> "No prior mark"
+        }
+        Text(comparison, style = NoopType.footnote,
+            color = if (isRecord) Palette.metricCyan else Palette.textTertiary)
+    }
+}
+
 private data class ExerciseDraft(val id: String, val name: String, val sets: List<SetDraft>)
 private data class SetDraft(
     val id: String,
@@ -564,5 +643,9 @@ private fun updateSet(
 }
 
 private fun cleanLoad(value: Double): String = String.format(Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
+private fun progressLoad(kg: Double, imperial: Boolean): String {
+    val value = kg * if (imperial) POUNDS_PER_KG else 1.0
+    return "${cleanLoad(value)} ${if (imperial) "lb" else "kg"}"
+}
 private fun formatRestTimer(seconds: Int): String = "%d:%02d".format(Locale.US, seconds / 60, seconds % 60)
 private const val POUNDS_PER_KG = 2.204_622_621_8
