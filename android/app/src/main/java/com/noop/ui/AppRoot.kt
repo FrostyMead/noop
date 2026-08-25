@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -82,6 +83,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -282,6 +284,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
     val currentRoute = backStack?.destination?.route
     val current = Destination.forRoute(currentRoute)
     var showQuickActions by remember { mutableStateOf(false) }
+    var requestTodayCustomization by remember { mutableStateOf(false) }
     // The Updates inbox sheet (opened by the Today header bell). The store is a process singleton so
     // the Today cards and the import path post to the same inbox this sheet renders.
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -295,13 +298,11 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
         Scaffold(
             containerColor = Palette.surfaceBase,
             bottomBar = {
-                // One unified "glass" bar: four evenly-spaced tabs — Today · Trends · Sleep · More
-                // (matches the iOS FloatingTabBar). The quick-action "+" lives in the Today header's
-                // top-right (balancing the avatar), so the bar is clean tabs only. "More" navigates to
-                // its own page (mirroring the iOS More tab) that reaches every grouped destination, so no
-                // destination is lost without the drawer.
+                // Four navigation tabs in one neutral capsule, plus a separate round quick-action disc—
+                // the same visual balance as the supplied WHOOP reference.
                 GlassBottomBar(
                     current = current,
+                    onQuickActions = { showQuickActions = true },
                     onTabSelected = { dest ->
                         if (dest.route != currentRoute) nav.navigateTopLevel(dest.route)
                     },
@@ -326,9 +327,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.Today.route) {
                     TodayScreen(
                         viewModel = viewModel,
-                        // The quick-action "+" lives in the Today header's top-right now (off the
-                        // bottom bar) — it opens the same quick-action sheet the bar used to.
-                        onQuickActions = { showQuickActions = true },
+                        customizeRequested = requestTodayCustomization,
+                        onCustomizeRequestHandled = { requestTodayCustomization = false },
                         // The Updates "ringer" — the bell sits before the +, and opens the inbox
                         // sheet AppRoot presents (it owns the nav for deep-links).
                         updateStore = updateStore,
@@ -479,8 +479,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
             }
         }
 
-        // Quick-actions sheet, opened by the raised gold centre FAB. Each row routes to an
-        // existing destination — nothing new is built here, the FAB is just a faster door in.
+        // Quick-actions sheet, opened by the separate + disc beside the navigation capsule.
         if (showQuickActions) {
             ModalBottomSheet(
                 onDismissRequest = { showQuickActions = false },
@@ -497,6 +496,22 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         "Quick actions",
                         modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 6.dp),
                         color = Palette.textTertiary,
+                    )
+                    NavigationDrawerItem(
+                        selected = false,
+                        onClick = {
+                            showQuickActions = false
+                            requestTodayCustomization = true
+                            nav.navigateTopLevel(Destination.Today.route)
+                        },
+                        icon = { Icon(Icons.Filled.Tune, contentDescription = null) },
+                        label = { Text(stringResource(R.string.today_customize_title), style = NoopType.body) },
+                        colors = NavigationDrawerItemDefaults.colors(
+                            unselectedContainerColor = Palette.surfaceRaised,
+                            unselectedIconColor = Palette.accent,
+                            unselectedTextColor = Palette.textPrimary,
+                        ),
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                     )
                     // Updates inbox — relocated here off the Today header (the liquid Today header mirrors iOS,
                     // which has no notifications bell). The feature is fully intact and one tap away: this row
@@ -766,6 +781,7 @@ private val barTrailingTabs = listOf(
 @Composable
 private fun GlassBottomBar(
     current: Destination,
+    onQuickActions: () -> Unit,
     onTabSelected: (Destination) -> Unit,
 ) {
     val barShape = RoundedCornerShape(50)
@@ -776,60 +792,86 @@ private fun GlassBottomBar(
             // floats free of the bottom edge rather than jamming against it — iOS clears the home-indicator
             // safe area + 4pt; navigationBarsPadding plus a compact bottom inset gives the same lift.
             .navigationBarsPadding()
-            .padding(horizontal = Metrics.space16)
+            .padding(horizontal = Metrics.space12)
             .padding(top = Metrics.space4, bottom = Metrics.space10),
         contentAlignment = Alignment.Center,
     ) {
-        Surface(
-            shape = barShape,
-            // "Glass": a translucent raised surface — a frosted island, not a hard slab. Compose has no
-            // cheap blur, so translucency + a hairline rim is the Liquid-Glass stand-in. A soft,
-            // low drop shadow reads as floating without a glow.
-            color = Palette.surfaceRaised.copy(alpha = if (Palette.isLight) 0.96f else 0.92f),
-            tonalElevation = 4.dp,
-            shadowElevation = 10.dp,
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                // Cap the width so the pill stays a centred floating island on tablets, not a full-bleed bar.
-                .widthIn(max = 480.dp)
-                .border(1.dp, Palette.hairline.copy(alpha = 0.72f), barShape),
+                .widthIn(max = 560.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
         ) {
-            Row(
+            Surface(
+                shape = barShape,
+                color = Palette.surfaceRaised.copy(alpha = if (Palette.isLight) 0.96f else 0.94f),
+                tonalElevation = 4.dp,
+                shadowElevation = 10.dp,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Metrics.space6, vertical = Metrics.space6),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    .weight(1f)
+                    .border(1.dp, Palette.hairline.copy(alpha = 0.72f), barShape),
             ) {
-                barLeadingTabs.forEach { tab ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Metrics.space4, vertical = Metrics.space6),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(1.dp),
+                ) {
+                    barLeadingTabs.forEach { tab ->
+                        BarSlot(
+                            icon = tab.icon,
+                            label = stringResource(tab.labelRes),
+                            active = current == tab.dest,
+                            modifier = Modifier.weight(1f),
+                            onClick = { onTabSelected(tab.dest) },
+                        )
+                    }
+                    barTrailingTabs.forEach { tab ->
+                        BarSlot(
+                            icon = tab.icon,
+                            label = stringResource(tab.labelRes),
+                            active = current == tab.dest,
+                            modifier = Modifier.weight(1f),
+                            onClick = { onTabSelected(tab.dest) },
+                        )
+                    }
                     BarSlot(
-                        icon = tab.icon,
-                        label = stringResource(tab.labelRes),
-                        active = current == tab.dest,
+                        icon = Icons.Filled.MoreHoriz,
+                        label = stringResource(R.string.nav_more),
+                        active = current != Destination.Today && current != Destination.Trends &&
+                            current != Destination.Sleep,
                         modifier = Modifier.weight(1f),
-                        onClick = { onTabSelected(tab.dest) },
+                        onClick = { onTabSelected(Destination.More) },
                     )
                 }
-                barTrailingTabs.forEach { tab ->
-                    BarSlot(
-                        icon = tab.icon,
-                        label = stringResource(tab.labelRes),
-                        active = current == tab.dest,
-                        modifier = Modifier.weight(1f),
-                        onClick = { onTabSelected(tab.dest) },
+            }
+
+            Surface(
+                shape = CircleShape,
+                color = Palette.surfaceRaised.copy(alpha = if (Palette.isLight) 0.96f else 0.94f),
+                tonalElevation = 4.dp,
+                shadowElevation = 10.dp,
+                modifier = Modifier
+                    .size(66.dp)
+                    .border(1.dp, Palette.accent.copy(alpha = 0.30f), CircleShape)
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onQuickActions,
+                    )
+                    .semantics { contentDescription = "Quick actions" },
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = null,
+                        tint = Palette.accent,
+                        modifier = Modifier.size(26.dp),
                     )
                 }
-                BarSlot(
-                    icon = Icons.Filled.MoreHoriz,
-                    label = stringResource(R.string.nav_more),
-                    // Selected on the More page itself, and also kept lit whenever the current screen is
-                    // one reached THROUGH More (i.e. not one of the bar's own three tabs) — so drilling
-                    // into any grouped destination still reads as "you're in More", never "nowhere".
-                    active = current != Destination.Today && current != Destination.Trends &&
-                        current != Destination.Sleep,
-                    modifier = Modifier.weight(1f),
-                    onClick = { onTabSelected(Destination.More) },
-                )
             }
         }
     }

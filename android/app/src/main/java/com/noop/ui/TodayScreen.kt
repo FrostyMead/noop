@@ -34,6 +34,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.Add
@@ -88,7 +89,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -227,11 +227,6 @@ private var todayDidSnapToTodayThisLaunch = false
 
 // MARK: - Liquid hero tokens (the liquid Today restyle)
 //
-// The hero card the score vessels float on, ported from the iOS LiquidTodayView. `heroFill` is a
-// translucent near-black (mock rgba(13,14,20,.80)) so it floats over the day-of-sky; the vessels + white
-// count-up numbers read crisp on it. Radius 32 + a white@0.11 hairline give the frosted-glass edge.
-private val LIQUID_HERO_RADIUS: Dp = 32.dp
-
 // The Vitality vessel purple (#9b7bff) — no exact Palette token in this theme, so a fixed brand literal
 // matching the iOS liquid Today's `liquidPurple` (Color(.sRGB, red:0x9b, green:0x7b, blue:0xff)). Used by
 // the mini "Your cards" vessel so Vitality reads the same purple as iOS.
@@ -267,7 +262,8 @@ private data class TodayLiveSnapshot(
 @Suppress("UNUSED_PARAMETER")
 fun TodayScreen(
     viewModel: AppViewModel,
-    onQuickActions: () -> Unit = {},
+    customizeRequested: Boolean = false,
+    onCustomizeRequestHandled: () -> Unit = {},
     updateStore: UpdateStore? = null,
     onOpenUpdates: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
@@ -428,6 +424,12 @@ fun TodayScreen(
     // #today-layout: the user-ordered below-hero section list + its editor dialog flag. Read once (prefs
     // aren't reactive) and re-read on the editor's save, exactly like enabledKeyMetrics above.
     var showLayoutEditor by remember { mutableStateOf(false) }
+    LaunchedEffect(customizeRequested) {
+        if (customizeRequested) {
+            showLayoutEditor = true
+            onCustomizeRequestHandled()
+        }
+    }
     var sectionOrder by remember { mutableStateOf(TodayLayoutPrefs.order(context)) }
     var hiddenSections by remember { mutableStateOf(TodayLayoutPrefs.hidden(context)) }
     // #today-layout (hold-to-drag): the hoisted list state (the drag math needs layoutInfo + scrollBy) and
@@ -1218,16 +1220,7 @@ fun TodayScreen(
             val keyDate = runCatching { LocalDate.parse(selectedDayKey) }.getOrNull() ?: selectedDay
             keyDate.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.getDefault()))
         }
-        // #486: header + wordmark + Arrange fold into ONE compact top cluster. Previously the decorative
-        // "N O O P" wordmark and the pinned "Arrange" affordance were each their own full-width list item,
-        // so the scaffold's 12dp rowSpacing left two near-empty sky bands stacked under the header ("empty
-        // space below NOOP"). Grouping them here removes those section gaps: the wordmark hangs 2dp under
-        // the title, and Arrange rides the SAME row as the wordmark (wordmark dead-centre, Arrange trailing)
-        // instead of claiming its own band.
-        Column(
-            modifier = Modifier.fillMaxWidth().staggeredAppear(0),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
+        Box(modifier = Modifier.fillMaxWidth().staggeredAppear(0)) {
             LiquidTodayHeader(
                 dayTitle = dayTitle,
                 humanDate = humanDate,
@@ -1238,30 +1231,9 @@ fun TodayScreen(
                 lastSyncAt = liveSnap.lastSyncAt,
                 historySyncExperimental = liveSnap.historySyncExperimental,
                 onPickDay = { offset -> selectedDayOffset = offset },
-                onQuickActions = onQuickActions,
                 onOpenSettings = onOpenSettings,
                 onOpenDevices = onOpenDevices,
             )
-            // WORDMARK (iOS LiquidWordmark parity): a subtle centred "N O O P" @ ~50% opacity, with a
-            // tap easter egg. Shares its row with the Arrange affordance — wordmark centred, Arrange
-            // aligned to the trailing edge — so neither needs its own empty band.
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                LiquidWordmark()
-                // One consistent customization affordance for section order and visibility.
-                TextButton(
-                    onClick = { showLayoutEditor = true },
-                    colors = ButtonDefaults.textButtonColors(contentColor = Palette.textTertiary),
-                    modifier = Modifier.align(Alignment.CenterEnd),
-                ) {
-                    Icon(
-                        Icons.Filled.Tune,
-                        contentDescription = stringResource(R.string.today_customize_title),
-                        modifier = Modifier.size(Metrics.iconSmall),
-                    )
-                    Spacer(Modifier.width(Metrics.space4))
-                    Text(stringResource(R.string.today_customize_action), style = NoopType.footnote)
-                }
-            }
         }
         }
 
@@ -1431,23 +1403,12 @@ fun TodayScreen(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            // The liquid hero CARD: a translucent near-black that floats over the day-of-sky
-                            // so the vessels + white count-up numbers stay crisp. A generous 32dp corner,
-                            // soft lift and faint white hairline make the score panel the dashboard anchor
-                            // (heroFill = rgba(13,14,20,.80), stroke white@0.11).
+                            // WHOOP-like score shelf: the three reactive liquid vessels float directly on
+                            // the neutral canvas. Keeping them unboxed removes a second dark slab and lets
+                            // the circles—not a colourful backdrop—be the dashboard's visual signature.
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .shadow(
-                                        elevation = 12.dp,
-                                        shape = RoundedCornerShape(LIQUID_HERO_RADIUS),
-                                        clip = false,
-                                    )
-                                    .background(
-                                        Palette.heroFill.copy(alpha = Palette.heroFill.alpha * CardAppearance.opacity),
-                                        RoundedCornerShape(LIQUID_HERO_RADIUS),
-                                    )
-                                    .border(1.dp, Palette.heroBorder.copy(alpha = Palette.heroBorder.alpha * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
                                     .staggeredAppear(stagger),
                             ) {
                                 ScoreHeroRow(
@@ -2018,35 +1979,6 @@ private fun TodayCardDismissButton(onClick: () -> Unit, modifier: Modifier = Mod
     }
 }
 
-@Composable
-private fun QuickActionDisc(onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    Box(
-        modifier = Modifier
-            // Sit level with the avatar / battery ring in the liquid header cluster (shared size).
-            .size(HeaderClusterControl)
-            .liquidPress(interaction)
-            .clip(CircleShape)
-            // A translucent-white disc so the + reads on the day-of-sky like the rest of the liquid cluster,
-            // with a crisp white glyph. Mirrors iOS LiquidAddButton (a "plus" on Circle().fill(.white@0.16)).
-            .background(Color.White.copy(alpha = 0.16f))
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onClick,
-            )
-            .semantics { contentDescription = uiString(R.string.l10n_today_screen_quick_actions_e47e8042) },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            Icons.Filled.Add,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(16.dp),
-        )
-    }
-}
-
 // MARK: - Scoring-guide affordances (ⓘ + first-run card)
 
 /**
@@ -2123,18 +2055,12 @@ private fun ScoringGuideIntroCard(onOpen: () -> Unit, onDismiss: () -> Unit) {
     }
 }
 
-// MARK: - Liquid Today header (iOS LiquidTodayView.scene parity)
+// MARK: - Today header
 //
-// A STRUCTURAL rebuild to mirror the iOS liquid Today header element-for-element (NOT the old numeric-date +
-// recording-light + bell header). LEFT: a tappable title block — the big rounded-bold day title over a human
-// date line ("Friday, 3 July"), tap opens the day picker. RIGHT: exactly the iOS four controls, in order —
-// a filled HEART (→ Support), the PROFILE AVATAR (→ Settings), a "+" ADD button (→ quick actions), and the
-// strap BATTERY RING (→ Devices). Each ~36dp, spacing ~8dp. There is no recording light and no bell here;
-// iOS's Today header has neither, and the Updates inbox is relocated into the "+" quick-actions sheet.
+// Flat WHOOP-like chrome: profile avatar · previous/date/next capsule · strap battery. Quick actions live
+// in the separate bottom-bar disc, leaving this row balanced and the selected date genuinely centred.
 
-/** The uniform diameter of the round Today-header controls — profile avatar, quick-add (+) and the strap
- *  battery ring — so they sit level in the liquid cluster (the sync chip beside them is content-sized).
- *  Single source of truth so a size tweak keeps all three in lockstep. */
+/** Shared diameter for the profile and strap controls flanking the date navigator. */
 private val HeaderClusterControl = 40.dp
 
 @Composable
@@ -2149,7 +2075,6 @@ private fun LiquidTodayHeader(
     lastSyncAt: Long? = null,
     historySyncExperimental: Boolean = false,
     onPickDay: (Int) -> Unit,
-    onQuickActions: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDevices: () -> Unit,
     modifier: Modifier = Modifier,
@@ -2184,61 +2109,22 @@ private fun LiquidTodayHeader(
         }
     }
 
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        // LEFT: the tappable title block — big rounded-bold day title over the human date line. Taps open the
-        // day picker; a horizontal swipe across the dashboard still changes the day. weight(1f) so the title
-        // claims the leading room and never pushes the trailing control cluster. Mirrors iOS's title Button.
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                // #492: NO rounded clip here. With indication = null there's no ripple to shape, and the
-                // rounded corners were clipping the title/date text's bottom-left (the "W" of "Wednesday").
-                // iOS's title Button uses a plain contentShape(Rectangle()) with no clip — mirror that.
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClickLabel = uiString(R.string.today_action_change_day),
-                    onClick = { showPicker = true },
-                )
-                .semantics { contentDescription = uiString(R.string.l10n_today_screen_daytitle_humandate_tap_to_pick_a_7e12ce96, dayTitle, humanDate) },
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                dayTitle,
-                // ~28sp Bold rounded, matching iOS `StrandFont.rounded(28)`. A soft shadow so it reads on the
-                // day-of-sky. NoopType.number is the house tabular sans; Bold at 28 is the display day title.
-                style = NoopType.number(28f, weight = FontWeight.Bold)
-                    .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.4f), offset = Offset(0f, 1f), blurRadius = 10f)),
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                humanDate,
-                style = NoopType.caption.copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.35f), offset = Offset(0f, 1f), blurRadius = 8f)),
-                color = Color.White.copy(alpha = 0.78f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+    val selectedOffset = ChronoUnit.DAYS.between(selectedDay, logicalDayNow()).toInt().coerceAtLeast(0)
+    val compactDate = selectedDay
+        .format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault()))
+        .uppercase(Locale.getDefault())
 
-        // RIGHT: the controls, in order — [sync chip] · avatar · + · battery ring. Each ~36dp, 8dp apart.
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space8),
+    ) {
+        // WHOOP-like top chrome: avatar on the left, compact date navigation in the centre, then only
+        // small utility controls. The old oversized weekday and decorative wordmark are deliberately gone.
         Row(
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
         ) {
-            // #245: compact sync-status chip, shown for EVERY user — syncing / last-synced / experimental,
-            // so the absence of active syncing reads as caught-up (the full SyncingHistoryNote is gated on
-            // recovery == null). Twin of iOS SyncStatusChip.
-            SyncStatusChip(
-                backfilling = backfilling, chunks = syncChunksThisSession,
-                lastSyncAt = lastSyncAt, historySyncExperimental = historySyncExperimental,
-            )
-            // (a) Profile avatar (the photo set in Settings, or the NOOP loop mark) → Settings. Mirrors iOS.
             Box(
                 modifier = Modifier
                     .size(HeaderClusterControl)
@@ -2253,11 +2139,84 @@ private fun LiquidTodayHeader(
             ) {
                 ProfileAvatar(size = HeaderClusterControl)
             }
-            // (b) Quick-add (+), the accented primary. Mirrors iOS's LiquidAddButton (a glyph on a translucent
-            // disc → the quick-actions menu). Sized to match the rest of the liquid cluster (shared HeaderClusterControl).
-            QuickActionDisc(onClick = onQuickActions)
-            // (c) Strap battery ring showing the % (iOS LiquidBatteryButton). Tap → Devices.
+
+            val dateShape = RoundedCornerShape(Metrics.cornerPill)
+            Surface(
+                shape = dateShape,
+                color = Palette.surfaceRaised,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(HeaderClusterControl)
+                    .border(1.dp, Palette.hairline, dateShape),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = { onPickDay(selectedOffset + 1) },
+                        modifier = Modifier.size(30.dp),
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                            contentDescription = uiString(R.string.l10n_strand_components_previous_day_e2b6b0a1),
+                            tint = Palette.textPrimary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClickLabel = uiString(R.string.today_action_change_day),
+                                onClick = { showPicker = true },
+                            )
+                            .semantics {
+                                contentDescription = uiString(
+                                    R.string.l10n_today_screen_daytitle_humandate_tap_to_pick_a_7e12ce96,
+                                    dayTitle,
+                                    humanDate,
+                                )
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            compactDate,
+                            style = NoopType.overline.copy(fontSize = 10.sp, letterSpacing = 0.8.sp),
+                            color = Palette.textPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    IconButton(
+                        enabled = selectedOffset > 0,
+                        onClick = { onPickDay((selectedOffset - 1).coerceAtLeast(0)) },
+                        modifier = Modifier.size(30.dp),
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = uiString(R.string.l10n_strand_components_next_day_38f859dd),
+                            tint = Palette.textPrimary.copy(alpha = if (selectedOffset > 0) 1f else 0.28f),
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+            }
+
             LiquidBatteryRing(batteryPct = batteryPct, onClick = onOpenDevices)
+        }
+
+        // Sync chrome is transient now: it appears while a history transfer is actually running, then
+        // gets out of the way. The persistent idle chip was extra noise beside the date navigator.
+        if (backfilling) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                SyncStatusChip(
+                    backfilling = true,
+                    chunks = syncChunksThisSession,
+                    lastSyncAt = lastSyncAt,
+                    historySyncExperimental = historySyncExperimental,
+                )
+            }
         }
     }
 }
@@ -2321,9 +2280,7 @@ private fun ChipCapsule(icon: ImageVector, text: String, tint: Color, desc: Stri
     }
 }
 
-/** The liquid header strap-battery ring: when connected + a reading exists it draws a trimmed ring in
- *  the charge/warning/critical hue plus the % inside, else a
- *  bolt-slash glyph. Tap → Devices. Mirrors the iOS liquid header battery ring. */
+/** Compact strap-battery ring on the same neutral disc as the other header controls. */
 @Composable
 private fun LiquidBatteryRing(batteryPct: Double?, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
@@ -2334,9 +2291,8 @@ private fun LiquidBatteryRing(batteryPct: Double?, onClick: () -> Unit) {
             .size(HeaderClusterControl)
             .liquidPress(interaction)
             .clip(CircleShape)
-            // A translucent near-black disc + faint white rim, matching iOS (rgba(10,11,16,.5) + white@.15).
-            .background(Color(red = 10f / 255f, green = 11f / 255f, blue = 16f / 255f, alpha = 0.5f))
-            .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
+            .background(Palette.surfaceRaised)
+            .border(1.dp, Palette.hairline, CircleShape)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -2358,7 +2314,7 @@ private fun LiquidBatteryRing(batteryPct: Double?, onClick: () -> Unit) {
                 val topLeft = Offset((size.width - d) / 2f, (size.height - d) / 2f)
                 // Track.
                 drawArc(
-                    color = Color.White.copy(alpha = 0.10f),
+                    color = Palette.textTertiary.copy(alpha = 0.24f),
                     startAngle = -90f,
                     sweepAngle = 360f,
                     useCenter = false,
@@ -2380,13 +2336,13 @@ private fun LiquidBatteryRing(batteryPct: Double?, onClick: () -> Unit) {
             Text(
                 uiString(R.string.l10n_today_screen_pct_roundtoint_05ba4549, pct.roundToInt()),
                 style = NoopType.number(9f, weight = FontWeight.Bold),
-                color = Color.White.copy(alpha = 0.9f),
+                color = Palette.textPrimary,
             )
         } else {
             Icon(
                 Icons.AutoMirrored.Filled.BatteryUnknown,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.5f),
+                tint = Palette.textTertiary,
                 modifier = Modifier.size(15.dp),
             )
         }
@@ -4940,11 +4896,8 @@ private fun MetricGrid(
         calibrationPrompt = stepsCalibrationPrompt,
     )
 
-    // FIX 3 (iOS `keyMetricsSection` parity): a 3-COLUMN grid of COMPACT liquid tiles, each an iOS `ktile`
-    // — a 9sp/+1.2 overline label, a value + small unit, and a thin 8dp LiquidTube fill bar — REPLACING the
-    // old 2-column large sparkline cards. One descriptor per KeyMetric, carrying the SAME value/tint reads
-    // the old builders used PLUS the tile's LiquidTube fraction (mirroring the iOS ktile frac). The #251
-    // editor + enabled-order + collapse expander are all preserved; only the tile look changes.
+    // A calm two-column grid: wider tiles keep the metric names and units readable at phone width, closer
+    // to WHOOP's larger dashboard modules than the old dense three-across instrument panel.
     val descriptors: Map<KeyMetric, KeyTileData> = mapOf(
         KeyMetric.CHARGE to run {
             val v = d?.recovery ?: lastScoredCharge?.value
@@ -5093,16 +5046,16 @@ private fun MetricGrid(
     val hasOverflow = allTiles.size > METRICS_COLLAPSED_CAP
     val tiles = if (metricsExpanded || !hasOverflow) allTiles else allTiles.take(METRICS_COLLAPSED_CAP)
 
-    // iOS `keyMetricsSection` LazyVGrid: 3 columns, spacing 8. Build from rows so tile heights tile uniformly
+    // Two columns, spacing 10. Build from rows so tile heights stay uniform
     // and a partial last row pads with empty weight so the columns stay aligned.
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        tiles.chunked(3).forEach { rowTiles ->
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        tiles.chunked(2).forEach { rowTiles ->
             // Detailed rows equalise heights (IntrinsicSize.Max + fillMaxHeight, the #399 idiom): a
             // graph-less tile (Steps/Weight/Calories) sharing a row with graphed neighbours must not
             // shrink its card. Compact rows keep the plain layout, byte-identical to before.
             Row(
                 modifier = if (detailed) Modifier.height(IntrinsicSize.Max) else Modifier,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 rowTiles.forEach { (metric, tile) ->
                     LiquidKeyTile(
@@ -5114,7 +5067,7 @@ private fun MetricGrid(
                         modifier = Modifier.weight(1f).then(if (detailed) Modifier.fillMaxHeight() else Modifier),
                     )
                 }
-                repeat(3 - rowTiles.size) { Spacer(Modifier.weight(1f)) }
+                repeat(2 - rowTiles.size) { Spacer(Modifier.weight(1f)) }
             }
         }
         // S5: the "Show all metrics" / "Show fewer" expander — a centered link like iOS. Toggles visibility
@@ -5151,7 +5104,7 @@ internal fun stepsTileShouldOpenCalibration(
     calibrationPrompt: String?,
 ): Boolean = realSteps == null && estimatedSteps == null && calibrationPrompt != null
 
-/** One compact Key-Metrics tile's data: iOS `ktile`(label, value, unit, tint, frac). [spark] is the
+/** One compact Key-Metrics tile's data. [spark] is the
  *  trailing trend series (oldest→newest) the DETAILED tile style graphs, capped at render to the editor's
  *  chosen window; empty hides the graph (a metric with no windowed series — Steps/Weight/Calories —
  *  stays tube-only even in detailed mode). */
@@ -5185,10 +5138,8 @@ private fun keyMetricIcon(metric: KeyMetric): ImageVector = when (metric) {
 }
 
 /**
- * One iOS `ktile`: a compact 3-column tile — a 9sp / +1.2 overline label, the value (number 17) + small
- * unit (caption), and a thin 8dp [LiquidTube] fill bar tinted [KeyTileData.tint] to [KeyTileData.frac].
- * Flat surfaceRaised fill + a 16dp-corner hairline (iOS ktile background), padding 12h / 11v. Replaces the
- * old tall 2-column SparkStatTile. A No-Data value dims and the tube reads empty.
+ * A wide two-column metric tile: overline label, strong value + unit, and a thin [LiquidTube] data bar.
+ * The rounded neutral surface keeps colour contained to the metric itself.
  *
  * [detailed] (the #251 editor's "Detailed tiles" switch): the tile grows a trend [Sparkline] in the
  * metric's tint under the fill bar — taller/squarer, per the tester mock — over the editor's [windowDays]
@@ -5217,11 +5168,12 @@ private fun LiquidKeyTile(
     } else {
         modifier
     }
+    val tileShape = RoundedCornerShape(20.dp)
     Column(
         modifier = base
-            .clip(RoundedCornerShape(16.dp))
-            .frostedCardSurface(cornerRadius = 16.dp)
-            .padding(horizontal = 12.dp, vertical = 11.dp)
+            .clip(tileShape)
+            .frostedCardSurface(cornerRadius = 20.dp)
+            .padding(horizontal = 14.dp, vertical = 13.dp)
             .semantics { contentDescription = uiString(R.string.l10n_today_screen_data_label_data_value_data_unit_27f6fd6b, data.label, displayValue, data.unit).trim() },
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -5236,11 +5188,11 @@ private fun LiquidKeyTile(
                 icon,
                 contentDescription = null,
                 tint = data.tint.copy(alpha = 0.72f),
-                modifier = Modifier.size(12.dp),
+                modifier = Modifier.size(14.dp),
             )
             Text(
                 data.label.uppercase(),
-                style = NoopType.overline.copy(fontSize = 9.sp, letterSpacing = 1.2.sp),
+                style = NoopType.overline.copy(fontSize = 10.sp, letterSpacing = 1.1.sp),
                 color = Palette.textTertiary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -5250,7 +5202,7 @@ private fun LiquidKeyTile(
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 displayValue,
-                style = NoopType.number(17f),
+                style = NoopType.number(21f),
                 color = if (hasValue) Palette.textPrimary else Palette.textTertiary,
                 maxLines = 1,
             )

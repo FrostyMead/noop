@@ -102,9 +102,10 @@ data class PaletteTokens(
 // Titanium column byte-for-byte: blue-grey canvas, WHOOP red→yellow→green recovery, green Charge,
 // blue Effort, slate Rest, amber Stress. NO gold anywhere — accent/gold tokens point to WHOOP blue.
 val DarkTokens = PaletteTokens(
-    surfaceBase = Color(0xFF121518), surfaceRaised = Color(0xFF25292C), surfaceOverlay = Color(0xFF1C1F26),
-    surfaceInset = Color(0xFF1F2229), hairline = Color(0xFF21304A), hairlineStrong = Color(0xFF2E3C57),
-    textPrimary = Color(0xFFF4F6F8), textSecondary = Color(0xFFC8CFD8), textTertiary = Color(0xFF8A94A4),
+    // Neutral WHOOP-like charcoal hierarchy: colour belongs to data, not the screen chrome.
+    surfaceBase = Color(0xFF101619), surfaceRaised = Color(0xFF292D30), surfaceOverlay = Color(0xFF202528),
+    surfaceInset = Color(0xFF34393D), hairline = Color(0xFF394045), hairlineStrong = Color(0xFF4B5359),
+    textPrimary = Color(0xFFF4F6F7), textSecondary = Color(0xFFC5C9CC), textTertiary = Color(0xFF90969B),
     glowAmbient = Color(0xFF3A2D0A),
     // Brand accent → mint, parity with iOS #1068 (NoopVisualStyle.mint/mintGlow). accentMuted is a dark
     // teal muted surface (green-shifted analog of the old navy 0xFF16233A). Gold stays in the recovery world.

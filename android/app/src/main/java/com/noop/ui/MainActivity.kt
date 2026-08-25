@@ -82,6 +82,9 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         appLocked = AppLockPrefs.isEnabled(this)
         syncScreenshotProtection()
+        // 2026 neutral-dashboard migration: retire the colourful sky once for existing installs too.
+        // The Appearance switches remain available, so the user can deliberately opt back in later.
+        NoopPrefs.applyNeutralDashboardDefault(this)
         // Load the saved "Card transparency" so every frosted card renders at the chosen opacity from launch.
         CardAppearance.init(this)
 
@@ -992,15 +995,24 @@ object NoopPrefs {
         of(context).edit().putBoolean(KEY_HYDRATION_TRACKING, enabled).apply()
     }
 
-    /** "Day-cycle background" (#698): the time-of-day scene (sunrise / day / dusk / night) behind the
-     *  Today screen. Default ON, it's the v7 atmosphere. Some people find the moving scene distracting
-     *  and want a plain dark canvas, so turning this off makes TodayScreen drop the SceneScreenBackground
-     *  and fall back to the flat surface; the cards already sit on an opaque canvas, so they stay just as
-     *  readable. Mirrors macOS @AppStorage("noop.showDayCycleBackground"). */
+    /** Optional day-cycle atmosphere. The default is the calm flat charcoal canvas; people who want the
+     *  sunrise/day/dusk scene can still opt in from Appearance settings. */
     const val KEY_SHOW_DAY_CYCLE_BACKGROUND = "noop.showDayCycleBackground"
 
+    private const val KEY_NEUTRAL_DASHBOARD_MIGRATED = "noop.neutralDashboardMigrated"
+
+    fun applyNeutralDashboardDefault(context: Context) {
+        val prefs = of(context)
+        if (prefs.getBoolean(KEY_NEUTRAL_DASHBOARD_MIGRATED, false)) return
+        prefs.edit()
+            .putBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, false)
+            .putBoolean(KEY_SKY_BEHIND_CARDS, false)
+            .putBoolean(KEY_NEUTRAL_DASHBOARD_MIGRATED, true)
+            .apply()
+    }
+
     fun showDayCycleBackground(context: Context): Boolean =
-        of(context).getBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, true)
+        of(context).getBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, false)
 
     fun setShowDayCycleBackground(context: Context, enabled: Boolean) {
         of(context).edit().putBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, enabled).apply()
@@ -1023,11 +1035,9 @@ object NoopPrefs {
      *  [showDayCycleBackground] — no effect when the scene is off. Read once on Today entry. */
     const val KEY_SKY_BEHIND_CARDS = "noop.skyBehindCards"
 
-    // Default ON: the day-cycle sky extends behind the whole scroll out of the box. Still user-toggleable
-    // in Settings ("Sky behind cards"); only never-toggled users pick up the new default. Twin of the iOS
-    // @AppStorage(SkyBehindCardsPrefs.enabledKey) defaults.
+    // Opt-in only: a fresh install stays on the neutral canvas even when transparent cards are enabled.
     fun skyBehindCards(context: Context): Boolean =
-        of(context).getBoolean(KEY_SKY_BEHIND_CARDS, true)
+        of(context).getBoolean(KEY_SKY_BEHIND_CARDS, false)
 
     fun setSkyBehindCards(context: Context, enabled: Boolean) {
         of(context).edit().putBoolean(KEY_SKY_BEHIND_CARDS, enabled).apply()
