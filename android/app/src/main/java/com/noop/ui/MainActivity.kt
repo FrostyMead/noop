@@ -194,21 +194,38 @@ class MainActivity : ComponentActivity() {
         }
 
         authenticationInFlight = true
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            showBiometricOrCredentialPrompt(title, onSuccess, onError)
-        } else {
-            val intent = keyguard.createConfirmDeviceCredentialIntent(
-                title,
-                "Confirm the screen lock for this phone.",
-            )
-            if (intent == null) {
-                authenticationInFlight = false
-                onError("This phone could not open its secure unlock screen.")
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                showBiometricOrCredentialPrompt(title, onSuccess, onError)
             } else {
-                credentialSuccess = onSuccess
-                credentialError = onError
-                credentialLauncher.launch(intent)
+                val intent = keyguard.createConfirmDeviceCredentialIntent(
+                    title,
+                    "Confirm the screen lock for this phone.",
+                )
+                if (intent == null) {
+                    authenticationInFlight = false
+                    onError("This phone could not open its secure unlock screen.")
+                } else {
+                    credentialSuccess = onSuccess
+                    credentialError = onError
+                    credentialLauncher.launch(intent)
+                }
             }
+        } catch (_: SecurityException) {
+            authenticationInFlight = false
+            credentialSuccess = null
+            credentialError = null
+            onError("Android denied access to secure authentication. Update or reinstall NOOP and try again.")
+        } catch (_: IllegalArgumentException) {
+            authenticationInFlight = false
+            credentialSuccess = null
+            credentialError = null
+            onError("This phone does not support the requested secure unlock method.")
+        } catch (_: IllegalStateException) {
+            authenticationInFlight = false
+            credentialSuccess = null
+            credentialError = null
+            onError("Android could not open secure authentication. Return to NOOP and try again.")
         }
     }
 
