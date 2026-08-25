@@ -59,6 +59,9 @@ public enum BackupSettings {
         "units.temperature": .string,
         "effort.scale": .string,
         "today.hostedCards": .string,
+        // Versioned reusable strength templates. Exercise names/reps/loads are user-authored but contain
+        // no device identifiers or credentials; the bounded library is stored as a JSON string.
+        StrengthRoutineLibrary.storageKey: .string,
         // #1361: the user's own custom journal BEHAVIOURS (newline-joined names). Deliberately NOT in
         // `appleDefaultsKey` below — it isn't a flat UserDefaults key (customs are derived from the
         // catalog items blob), so the app layer (`DataBackup`) bridges this one on export and restore.
@@ -83,6 +86,7 @@ public enum BackupSettings {
         "units.temperature": "units.temperature",
         "effort.scale": "effort.scale",
         "today.hostedCards": "today.hostedCards",
+        StrengthRoutineLibrary.storageKey: StrengthRoutineLibrary.storageKey,
     ]
 
     // MARK: - Snapshot / apply (UserDefaults boundary)
