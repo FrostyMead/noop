@@ -130,7 +130,7 @@ fun Modifier.frostedCardSurface(
         // off the warm-paper canvas with a soft drop shadow — the hairline alone is too faint on paper.
         .then(
             if (Palette.isLight)
-                Modifier.shadow(elevation = (6f * op).dp, shape = RoundedCornerShape(cornerRadius), clip = false)
+                Modifier.shadow(elevation = (8f * op).dp, shape = RoundedCornerShape(cornerRadius), clip = false)
             else Modifier
         )
         .drawBehind {
@@ -169,7 +169,7 @@ fun Modifier.frostedCardSurface(
         }
 }
 
-// MARK: - NoopCard — the one card surface (Titanium & Gold frosted card, 16dp radius)
+// MARK: - NoopCard — the one card surface (premium frosted card, generous continuous radius)
 //
 // PUBLIC API is unchanged (modifier, padding, content); an optional [tint] was ADDED
 // (defaulted null) so callers can opt into a per-domain accent wash without breaking
@@ -186,8 +186,10 @@ fun NoopCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(shape)
             .frostedCardSurface(tint = tint, cornerRadius = Metrics.cardRadius)
+            // Clip after painting the surface so the light-theme shadow can fall outside the card,
+            // while every child (charts, images and pressed states) still respects the rounded edge.
+            .clip(shape)
             .padding(padding),
     ) {
         content()
@@ -1167,18 +1169,18 @@ fun ScenicHeroBackground(
 // MARK: - ScreenScaffold (ported from Strand/Screens/ScreenScaffold.swift)
 //
 // Standard scrollable screen container: a title + optional subtitle header over the
-// dark surface, then a left-aligned content column with 28dp screen padding.
+// dark surface, then a left-aligned content column with the shared screen inset.
 
 @Composable
 fun ScreenScaffold(
     title: String?,
     subtitle: String? = null,
     modifier: Modifier = Modifier,
-    // Top inset above the content. Defaults to the standard 28dp screen padding; a screen that
+    // Top inset above the content. Defaults to the shared screen inset; a screen that
     // supplies its own compact header (Today, title = null) can pass a smaller value to tighten the
     // gap above its first element — Compose forbids negative padding, so this is how iOS's
     // `.padding(top: -16)` tightening is expressed.
-    topPadding: Dp = 28.dp,
+    topPadding: Dp = Metrics.screenPadding,
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     // Optional full-bleed view drawn behind the scroll content at the TOP of the screen (e.g. Today's
@@ -1209,7 +1211,12 @@ fun ScreenScaffold(
         Column(
             modifier = columnModifier
                 .verticalScroll(rememberScrollState())
-                .padding(start = 28.dp, end = 28.dp, top = topPadding, bottom = 28.dp),
+                .padding(
+                    start = Metrics.screenPadding,
+                    end = Metrics.screenPadding,
+                    top = topPadding,
+                    bottom = Metrics.screenPadding,
+                ),
             // #765: one shared inter-card spacing token (was a bare `20.dp`), so the eager + lazy scaffolds
             // and every screen through them keep the SAME uniform gap between top-level cards.
             verticalArrangement = Arrangement.spacedBy(Metrics.screenRowSpacing),
@@ -1295,7 +1302,7 @@ fun ScreenScaffold(
 //
 // The content slot is a [LazyListScope] (item { } / items(...)) rather than a ColumnScope,
 // so callers stay explicit about what is a one-off header vs the lazily-built list — and
-// every existing ScreenScaffold caller is untouched. The header, 28dp screen padding and
+// every existing ScreenScaffold caller is untouched. The header, shared screen inset and
 // the shared Metrics.screenRowSpacing inter-item gap match ScreenScaffold so the two read identically.
 
 @Composable
@@ -1306,7 +1313,7 @@ fun LazyScreenScaffold(
     // Mirrors ScreenScaffold: a screen with a scene-backed header (Today-style) can tighten the gap
     // above its first row, and supply leading/trailing header actions + a screen-level scene backdrop.
     // All defaulted, so the existing flat callers (Intelligence) are byte-for-byte untouched.
-    topPadding: Dp = 28.dp,
+    topPadding: Dp = Metrics.screenPadding,
     // The inter-row vertical spacing between top-level items. Defaults to the shared `screenRowSpacing`
     // (20dp) so every existing caller is byte-for-byte untouched; the liquid Today passes a tighter value
     // to match the iOS Today's compact `VStack(spacing: 12)` section rhythm (the maintainer's "iOS is
@@ -1371,7 +1378,12 @@ fun LazyScreenScaffold(
         LazyColumn(
             modifier = listModifier,
             state = listState,
-            contentPadding = PaddingValues(start = 28.dp, top = topPadding, end = 28.dp, bottom = 28.dp),
+            contentPadding = PaddingValues(
+                start = Metrics.screenPadding,
+                top = topPadding,
+                end = Metrics.screenPadding,
+                bottom = Metrics.screenPadding,
+            ),
             // #765: the shared inter-card spacing token by default (Today/Explore + the eager screens share
             // one uniform card rhythm); a caller may pass a tighter [rowSpacing] (the liquid Today does, for
             // the iOS-compact section rhythm).

@@ -394,20 +394,22 @@ object Metrics {
     val space18 = 18.dp
     val space24 = 24.dp
     val sourceBadgeHeight = 18.dp
-    val cardRadius = 18.dp   // Bevel continuous radius (18–22dp)
-    val cornerXs = 2.dp
-    val cornerSm = 12.dp
-    val cornerBadge = 6.dp
+    // Rounded-premium geometry. Cards use one generous continuous radius so dashboard tiles,
+    // settings groups and sheets feel like the same product instead of a mix of small rectangles.
+    val cardRadius = 24.dp
+    val cornerXs = 8.dp
+    val cornerSm = 16.dp
+    val cornerBadge = 8.dp
     val cornerPill = 50.dp
-    val cardPadding = 16.dp
-    val gap = 12.dp           // gap between cards
-    val sectionGap = 28.dp    // gap between sections
+    val cardPadding = 18.dp
+    val gap = 14.dp           // gap between cards
+    val sectionGap = 32.dp    // gap between sections
     // #765: the ONE inter-card vertical spacing for a screen's top-level scroll rows. Both ScreenScaffold
     // and LazyScreenScaffold use this for `spacedBy(...)`, so every Today/Explore card sits on the same
     // rhythm instead of a bare `20.dp` literal repeated per scaffold (and Today no longer injects ad-hoc
     // Spacer rows that broke that rhythm). One token = uniform, consistent gaps across the screens.
-    val screenRowSpacing = 20.dp
-    val screenPadding = 24.dp
+    val screenRowSpacing = 18.dp
+    val screenPadding = 20.dp
     val tileHeight = 108.dp   // every metric tile is this tall
     val chartHeight = 220.dp
     val dialogScrollableMaxHeight = 560.dp
@@ -548,11 +550,11 @@ private val NoopMaterialTypography = Typography(
 )
 
 private val NoopShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
+    extraSmall = RoundedCornerShape(10.dp),
+    small = RoundedCornerShape(Metrics.cornerSm),
     medium = RoundedCornerShape(Metrics.cardRadius),
-    large = RoundedCornerShape(20.dp),
-    extraLarge = RoundedCornerShape(28.dp),
+    large = RoundedCornerShape(28.dp),
+    extraLarge = RoundedCornerShape(32.dp),
 )
 
 /**

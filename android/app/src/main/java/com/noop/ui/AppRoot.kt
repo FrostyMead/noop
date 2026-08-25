@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -773,30 +774,30 @@ private fun GlassBottomBar(
             .fillMaxWidth()
             // Clear the gesture-nav bar (home indicator) first, then add breathing room so the capsule
             // floats free of the bottom edge rather than jamming against it — iOS clears the home-indicator
-            // safe area + 4pt; here navigationBarsPadding + 12dp gives the same lift.
+            // safe area + 4pt; navigationBarsPadding plus a compact bottom inset gives the same lift.
             .navigationBarsPadding()
-            .padding(horizontal = 22.dp)
-            .padding(top = 4.dp, bottom = Metrics.space12),
+            .padding(horizontal = Metrics.space16)
+            .padding(top = Metrics.space4, bottom = Metrics.space10),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
             shape = barShape,
             // "Glass": a translucent raised surface — a frosted island, not a hard slab. Compose has no
-            // cheap blur, so translucency (≈0.80) + a hairline rim is the Liquid-Glass stand-in. A soft,
+            // cheap blur, so translucency + a hairline rim is the Liquid-Glass stand-in. A soft,
             // low drop shadow reads as floating without a glow.
-            color = Palette.surfaceRaised.copy(alpha = 0.80f),
-            tonalElevation = 2.dp,
-            shadowElevation = 4.dp,
+            color = Palette.surfaceRaised.copy(alpha = if (Palette.isLight) 0.96f else 0.92f),
+            tonalElevation = 4.dp,
+            shadowElevation = 10.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 // Cap the width so the pill stays a centred floating island on tablets, not a full-bleed bar.
                 .widthIn(max = 480.dp)
-                .border(0.5.dp, Palette.hairline.copy(alpha = 0.6f), barShape),
+                .border(1.dp, Palette.hairline.copy(alpha = 0.72f), barShape),
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 7.dp),
+                    .padding(horizontal = Metrics.space6, vertical = Metrics.space6),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
@@ -834,8 +835,8 @@ private fun GlassBottomBar(
     }
 }
 
-/** One nav slot: an icon over a small label. Active = gold accent (semibold), inactive = textSecondary.
- *  No selection pill, no glow — just the colour swap, matching the iOS bar. */
+/** One nav slot: an icon over a small label. The active destination sits in a soft rounded capsule,
+ *  giving the floating island a clear selected state without adding a glow or visual noise. */
 @Composable
 private fun BarSlot(
     icon: ImageVector,
@@ -845,15 +846,22 @@ private fun BarSlot(
     onClick: () -> Unit,
 ) {
     val tint = if (active) Palette.accent else Palette.textSecondary
+    val slotShape = RoundedCornerShape(18.dp)
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(slotShape)
+            .background(if (active) Palette.accentMuted else Color.Transparent, slotShape)
+            .border(
+                width = if (active) 1.dp else 0.dp,
+                color = if (active) Palette.accent.copy(alpha = 0.18f) else Color.Transparent,
+                shape = slotShape,
+            )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onClick,
             )
-            .padding(vertical = 3.dp)
+            .padding(vertical = Metrics.space6)
             .semantics { contentDescription = label },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(3.dp),

@@ -88,6 +88,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -228,8 +229,8 @@ private var todayDidSnapToTodayThisLaunch = false
 //
 // The hero card the score vessels float on, ported from the iOS LiquidTodayView. `heroFill` is a
 // translucent near-black (mock rgba(13,14,20,.80)) so it floats over the day-of-sky; the vessels + white
-// count-up numbers read crisp on it. Radius 26 + a white@0.11 hairline give the frosted-glass edge.
-private val LIQUID_HERO_RADIUS: Dp = 26.dp
+// count-up numbers read crisp on it. Radius 32 + a white@0.11 hairline give the frosted-glass edge.
+private val LIQUID_HERO_RADIUS: Dp = 32.dp
 
 // The Vitality vessel purple (#9b7bff) — no exact Palette token in this theme, so a fixed brand literal
 // matching the iOS liquid Today's `liquidPurple` (Color(.sRGB, red:0x9b, green:0x7b, blue:0xff)). Used by
@@ -1431,12 +1432,17 @@ fun TodayScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             // The liquid hero CARD: a translucent near-black that floats over the day-of-sky
-                            // so the vessels + white count-up numbers stay crisp. A rounded 26 corner + a
-                            // faint white hairline give it the frosted-glass edge of the iOS liquid heroCard
+                            // so the vessels + white count-up numbers stay crisp. A generous 32dp corner,
+                            // soft lift and faint white hairline make the score panel the dashboard anchor
                             // (heroFill = rgba(13,14,20,.80), stroke white@0.11).
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .shadow(
+                                        elevation = 12.dp,
+                                        shape = RoundedCornerShape(LIQUID_HERO_RADIUS),
+                                        clip = false,
+                                    )
                                     .background(
                                         Palette.heroFill.copy(alpha = Palette.heroFill.alpha * CardAppearance.opacity),
                                         RoundedCornerShape(LIQUID_HERO_RADIUS),
@@ -2129,7 +2135,7 @@ private fun ScoringGuideIntroCard(onOpen: () -> Unit, onDismiss: () -> Unit) {
 /** The uniform diameter of the round Today-header controls — profile avatar, quick-add (+) and the strap
  *  battery ring — so they sit level in the liquid cluster (the sync chip beside them is content-sized).
  *  Single source of truth so a size tweak keeps all three in lockstep. */
-private val HeaderClusterControl = 36.dp
+private val HeaderClusterControl = 40.dp
 
 @Composable
 private fun LiquidTodayHeader(
