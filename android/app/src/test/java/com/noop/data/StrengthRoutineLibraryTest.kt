@@ -38,4 +38,11 @@ class StrengthRoutineLibraryTest {
         assertTrue(full.isValid)
         assertNull(full.upserting(StrengthRoutine("overflow", "Overflow", routine.exercises)))
     }
+
+    @Test fun restTimerNormalizesAndCyclesSupportedDurations() {
+        assertEquals(120, StrengthRestTimer.normalized(120))
+        assertEquals(StrengthRestTimer.DEFAULT_SECONDS, StrengthRestTimer.normalized(0))
+        assertEquals(120, StrengthRestTimer.next(90))
+        assertEquals(30, StrengthRestTimer.next(300))
+    }
 }

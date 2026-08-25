@@ -20,6 +20,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.noop.data.StrengthExercise
 import com.noop.data.StrengthRoutine
 import com.noop.data.StrengthRoutineLibrary
+import com.noop.data.StrengthRestTimer
 import com.noop.data.StrengthSet
 import com.noop.data.StrengthWorkout
 import com.noop.data.WorkoutRow
@@ -39,6 +41,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.UUID
+import kotlinx.coroutines.delay
 
 /** Dedicated set-level strength logger; volume remains separate from HR-derived Effort. */
 @Composable
@@ -64,6 +67,23 @@ internal fun StrengthWorkoutDialog(
     var showSaveRoutine by remember { mutableStateOf(false) }
     var routineName by remember { mutableStateOf("") }
     var routineError by remember { mutableStateOf<String?>(null) }
+    var restSeconds by remember {
+        mutableStateOf(StrengthRestTimer.normalized(
+            routinePrefs.getInt(StrengthRestTimer.PREFS_KEY, StrengthRestTimer.DEFAULT_SECONDS),
+        ))
+    }
+    var restTimerEndMillis by remember { mutableStateOf<Long?>(null) }
+    var restNowMillis by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(restTimerEndMillis) {
+        val end = restTimerEndMillis ?: return@LaunchedEffect
+        while (restNowMillis < end) {
+            restNowMillis = System.currentTimeMillis()
+            if (restNowMillis < end) delay(250)
+        }
+    }
+    val remainingRestSeconds = restTimerEndMillis?.let { end ->
+        (((end - restNowMillis).coerceAtLeast(0) + 999) / 1_000).toInt()
+    } ?: 0
     val now = System.currentTimeMillis()
     var startMillis by remember(editing?.startTs) {
         mutableStateOf(editing?.startTs?.times(1000) ?: now - 45 * 60 * 1000)
@@ -84,6 +104,7 @@ internal fun StrengthWorkoutDialog(
                         reps = set.reps.toString(),
                         weight = set.weightKg?.let { cleanLoad(it * if (imperial) POUNDS_PER_KG else 1.0) } ?: "",
                         isWarmup = set.isWarmup,
+                        completed = false,
                     )
                 },
             )
@@ -180,6 +201,60 @@ internal fun StrengthWorkoutDialog(
                     }
                 }
 
+                NoopCard {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("REST TIMER", style = NoopType.overline, color = Palette.textTertiary)
+                                Text(
+                                    if (remainingRestSeconds > 0) "Next set in"
+                                    else if (restTimerEndMillis == null) "Ready when you are" else "Rest complete",
+                                    style = NoopType.footnote,
+                                    color = Palette.textSecondary,
+                                )
+                            }
+                            Text(
+                                formatRestTimer(remainingRestSeconds),
+                                style = NoopType.number(28f),
+                                color = if (remainingRestSeconds > 0) Palette.effortBright else Palette.metricCyan,
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                onClick = {
+                                    restSeconds = StrengthRestTimer.next(restSeconds)
+                                    routinePrefs.edit().putInt(StrengthRestTimer.PREFS_KEY, restSeconds).apply()
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Rest ${formatRestTimer(restSeconds)}") }
+                            Button(
+                                onClick = {
+                                    val current = System.currentTimeMillis()
+                                    restNowMillis = current
+                                    restTimerEndMillis = current + restSeconds * 1_000L
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) { Text(if (remainingRestSeconds > 0) "Restart" else "Start") }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                onClick = {
+                                    val current = System.currentTimeMillis()
+                                    restNowMillis = current
+                                    restTimerEndMillis = maxOf(restTimerEndMillis ?: current, current) + 30_000L
+                                },
+                                enabled = restTimerEndMillis != null,
+                                modifier = Modifier.weight(1f),
+                            ) { Text("+30s") }
+                            TextButton(
+                                onClick = { restTimerEndMillis = null },
+                                enabled = restTimerEndMillis != null,
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Skip") }
+                        }
+                    }
+                }
+
                 exercises.forEachIndexed { exerciseIndex, exercise ->
                     NoopCard {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -206,8 +281,23 @@ internal fun StrengthWorkoutDialog(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
-                                    Text("${setIndex + 1}", style = NoopType.captionNumber,
-                                        color = Palette.textTertiary, modifier = Modifier.padding(end = 2.dp))
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("${setIndex + 1}", style = NoopType.captionNumber,
+                                            color = Palette.textTertiary)
+                                        Checkbox(
+                                            checked = set.completed,
+                                            onCheckedChange = { checked ->
+                                                exercises = updateSet(exercises, exerciseIndex, setIndex) {
+                                                    it.copy(completed = checked)
+                                                }
+                                                if (checked && !set.completed) {
+                                                    val current = System.currentTimeMillis()
+                                                    restNowMillis = current
+                                                    restTimerEndMillis = current + restSeconds * 1_000L
+                                                }
+                                            },
+                                        )
+                                    }
                                     OutlinedTextField(
                                         value = set.reps,
                                         onValueChange = { reps ->
@@ -258,7 +348,7 @@ internal fun StrengthWorkoutDialog(
                                     if (i == exerciseIndex) value.copy(
                                         sets = value.sets + SetDraft(
                                             UUID.randomUUID().toString(), previous?.reps ?: "8",
-                                            previous?.weight ?: "", false,
+                                            previous?.weight ?: "", false, false,
                                         ),
                                     ) else value
                                 }
@@ -330,7 +420,7 @@ internal fun StrengthWorkoutDialog(
                                         exercise.sets.map { set ->
                                             SetDraft(UUID.randomUUID().toString(), set.reps.toString(),
                                                 set.weightKg?.let { cleanLoad(it * displayFactor) } ?: "",
-                                                set.isWarmup)
+                                                set.isWarmup, false)
                                         },
                                     )
                                 }
@@ -452,11 +542,17 @@ private fun SummaryValue(label: String, value: String, modifier: Modifier = Modi
 }
 
 private data class ExerciseDraft(val id: String, val name: String, val sets: List<SetDraft>)
-private data class SetDraft(val id: String, val reps: String, val weight: String, val isWarmup: Boolean)
+private data class SetDraft(
+    val id: String,
+    val reps: String,
+    val weight: String,
+    val isWarmup: Boolean,
+    val completed: Boolean,
+)
 
 private fun blankExercise() = ExerciseDraft(
     UUID.randomUUID().toString(), "",
-    listOf(SetDraft(UUID.randomUUID().toString(), "8", "", false)),
+    listOf(SetDraft(UUID.randomUUID().toString(), "8", "", false, false)),
 )
 
 private fun updateSet(
@@ -468,4 +564,5 @@ private fun updateSet(
 }
 
 private fun cleanLoad(value: Double): String = String.format(Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
+private fun formatRestTimer(seconds: Int): String = "%d:%02d".format(Locale.US, seconds / 60, seconds % 60)
 private const val POUNDS_PER_KG = 2.204_622_621_8

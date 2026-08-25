@@ -41,4 +41,11 @@ final class StrengthRoutineLibraryTests: XCTestCase {
         XCTAssertNil(full.upserting(StrengthRoutine(id: "overflow", name: "Overflow",
                                                     exercises: routine.exercises)))
     }
+
+    func testRestTimerNormalizesAndCyclesSupportedDurations() {
+        XCTAssertEqual(StrengthRestTimer.normalized(120), 120)
+        XCTAssertEqual(StrengthRestTimer.normalized(0), StrengthRestTimer.defaultSeconds)
+        XCTAssertEqual(StrengthRestTimer.next(after: 90), 120)
+        XCTAssertEqual(StrengthRestTimer.next(after: 300), 30)
+    }
 }

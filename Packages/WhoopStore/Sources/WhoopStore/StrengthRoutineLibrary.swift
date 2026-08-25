@@ -1,5 +1,22 @@
 import Foundation
 
+/// Shared rest-timer preference used by the strength logger on every platform.
+public enum StrengthRestTimer {
+    public static let storageKey = "strength.restSeconds"
+    public static let defaultSeconds = 90
+    public static let allowedSeconds = [30, 60, 90, 120, 180, 300]
+
+    public static func normalized(_ seconds: Int) -> Int {
+        allowedSeconds.contains(seconds) ? seconds : defaultSeconds
+    }
+
+    public static func next(after seconds: Int) -> Int {
+        let current = normalized(seconds)
+        guard let index = allowedSeconds.firstIndex(of: current) else { return defaultSeconds }
+        return allowedSeconds[(index + 1) % allowedSeconds.count]
+    }
+}
+
 /// Versioned, local collection of reusable strength templates.
 ///
 /// Routines store only user-entered exercise/set defaults. Starting a workout clones those defaults

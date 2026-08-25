@@ -22,6 +22,8 @@ struct StrengthWorkoutSheet: View {
     @State private var showSaveRoutine = false
     @State private var routineName = ""
     @State private var routineError: String?
+    @State private var restSeconds: Int
+    @State private var restTimerEnd: Date?
 
     private static let poundsPerKilogram = 2.204_622_621_8
 
@@ -42,13 +44,17 @@ struct StrengthWorkoutSheet: View {
             ExerciseDraft(id: exercise.id, name: exercise.name, sets: exercise.sets.map { set in
                 SetDraft(id: set.id, reps: String(set.reps),
                          weight: set.weightKg.map { Self.clean($0 * (imperial ? Self.poundsPerKilogram : 1)) } ?? "",
-                         isWarmup: set.isWarmup)
+                         isWarmup: set.isWarmup, isCompleted: false)
             })
         } ?? [ExerciseDraft.blank()])
         _routineLibrary = State(initialValue:
             StrengthRoutineLibrary.decode(UserDefaults.standard.string(forKey: StrengthRoutineLibrary.storageKey))
             ?? StrengthRoutineLibrary())
         _loadedRoutineID = State(initialValue: nil)
+        _restSeconds = State(initialValue: StrengthRestTimer.normalized(
+            UserDefaults.standard.integer(forKey: StrengthRestTimer.storageKey)
+        ))
+        _restTimerEnd = State(initialValue: nil)
     }
 
     var body: some View {
@@ -71,6 +77,7 @@ struct StrengthWorkoutSheet: View {
                 }
 
                 routineControls
+                restTimerCard
 
                 ForEach($exercises) { $exercise in
                     exerciseCard($exercise)
@@ -105,6 +112,53 @@ struct StrengthWorkoutSheet: View {
                 .disabled(routineName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || payload == nil)
         } message: {
             Text(routineError ?? "Save these exercises, sets, reps and loads for a future workout.")
+        }
+    }
+
+    private var restTimerCard: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let remaining = remainingRestSeconds(at: context.date)
+            NoopCard(tint: StrandPalette.metricCyan) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("REST TIMER").strandOverline()
+                            Text(remaining > 0 ? "Next set in" : (restTimerEnd == nil ? "Ready when you are" : "Rest complete"))
+                                .font(StrandFont.footnote).foregroundStyle(StrandPalette.textSecondary)
+                        }
+                        Spacer()
+                        Text(formatTimer(remaining))
+                            .font(StrandFont.number(28))
+                            .monospacedDigit()
+                            .foregroundStyle(remaining > 0 ? StrandPalette.effortBright : StrandPalette.metricCyan)
+                    }
+
+                    HStack(spacing: 10) {
+                        Menu {
+                            ForEach(StrengthRestTimer.allowedSeconds, id: \.self) { seconds in
+                                Button(formatTimer(seconds)) { setRestDuration(seconds) }
+                            }
+                        } label: {
+                            Label("Rest \(formatTimer(restSeconds))", systemImage: "timer")
+                                .font(StrandFont.footnote).foregroundStyle(StrandPalette.textPrimary)
+                                .padding(.horizontal, 10).padding(.vertical, 9)
+                                .background(StrandPalette.surfaceInset, in: inputShape)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        NoopButton(remaining > 0 ? "Restart" : "Start", systemImage: "play.fill", kind: .secondary) {
+                            startRestTimer()
+                        }
+                    }
+                    HStack(spacing: 10) {
+                        NoopButton("+30s", kind: .tertiary) { addRestTime(30) }
+                            .disabled(restTimerEnd == nil)
+                        NoopButton("Skip", kind: .tertiary) { restTimerEnd = nil }
+                            .disabled(restTimerEnd == nil)
+                        Spacer()
+                    }
+                }
+            }
         }
     }
 
@@ -213,8 +267,36 @@ struct StrengthWorkoutSheet: View {
                 ForEach(Array(exercise.sets.wrappedValue.indices), id: \.self) { index in
                     let set = exercise.sets[index]
                     HStack(spacing: 8) {
-                        Text("\(index + 1)").font(StrandFont.captionNumber)
-                            .foregroundStyle(StrandPalette.textTertiary).frame(width: 30, alignment: .leading)
+                        Button {
+                            let completed = !set.isCompleted.wrappedValue
+                            set.isCompleted.wrappedValue = completed
+                            if completed { startRestTimer() }
+                        } label: {
+                            ZStack {
+                                Circle()
+                                    .fill(set.isCompleted.wrappedValue
+                                          ? StrandPalette.metricCyan : Color.clear)
+                                    .overlay(Circle().strokeBorder(
+                                        set.isCompleted.wrappedValue
+                                        ? StrandPalette.metricCyan : StrandPalette.textTertiary,
+                                        lineWidth: 1.5
+                                    ))
+                                if set.isCompleted.wrappedValue {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundStyle(StrandPalette.surfaceBase)
+                                } else {
+                                    Text("\(index + 1)")
+                                        .font(StrandFont.captionNumber)
+                                        .foregroundStyle(StrandPalette.textTertiary)
+                                }
+                            }
+                            .frame(width: 24, height: 24)
+                            .frame(width: 30)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(set.isCompleted.wrappedValue
+                                            ? "Set \(index + 1) complete" : "Complete set \(index + 1)")
                         strengthNumberField("8", text: set.reps)
                         strengthNumberField("optional", text: set.weight)
                         Button { set.isWarmup.wrappedValue.toggle() } label: {
@@ -338,7 +420,8 @@ struct StrengthWorkoutSheet: View {
         guard let i = exercises.firstIndex(where: { $0.id == exerciseID }) else { return }
         let previous = exercises[i].sets.last
         exercises[i].sets.append(SetDraft(id: UUID().uuidString, reps: previous?.reps ?? "8",
-                                          weight: previous?.weight ?? "", isWarmup: false))
+                                          weight: previous?.weight ?? "", isWarmup: false,
+                                          isCompleted: false))
     }
 
     private func removeSet(_ setID: String, from exerciseID: String) {
@@ -357,7 +440,7 @@ struct StrengthWorkoutSheet: View {
             ExerciseDraft(id: UUID().uuidString, name: exercise.name, sets: exercise.sets.map { set in
                 SetDraft(id: UUID().uuidString, reps: String(set.reps),
                          weight: set.weightKg.map { Self.clean($0 * displayFactor) } ?? "",
-                         isWarmup: set.isWarmup)
+                         isWarmup: set.isWarmup, isCompleted: false)
             })
         }
         loadedRoutineID = routine.id
@@ -404,6 +487,29 @@ struct StrengthWorkoutSheet: View {
         dismiss()
     }
 
+    private func setRestDuration(_ seconds: Int) {
+        restSeconds = StrengthRestTimer.normalized(seconds)
+        UserDefaults.standard.set(restSeconds, forKey: StrengthRestTimer.storageKey)
+    }
+
+    private func startRestTimer() {
+        restTimerEnd = Date().addingTimeInterval(TimeInterval(restSeconds))
+    }
+
+    private func addRestTime(_ seconds: Int) {
+        let base = max(restTimerEnd ?? Date(), Date())
+        restTimerEnd = base.addingTimeInterval(TimeInterval(seconds))
+    }
+
+    private func remainingRestSeconds(at date: Date) -> Int {
+        guard let restTimerEnd else { return 0 }
+        return max(0, Int(ceil(restTimerEnd.timeIntervalSince(date))))
+    }
+
+    private func formatTimer(_ seconds: Int) -> String {
+        String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
     private static func clean(_ value: Double) -> String {
         var out = String(format: "%.2f", value)
         while out.hasSuffix("0") { out.removeLast() }
@@ -417,7 +523,10 @@ private struct ExerciseDraft: Identifiable {
     var name: String
     var sets: [SetDraft]
     static func blank() -> Self {
-        Self(id: UUID().uuidString, name: "", sets: [SetDraft(id: UUID().uuidString, reps: "8", weight: "", isWarmup: false)])
+        Self(id: UUID().uuidString, name: "", sets: [
+            SetDraft(id: UUID().uuidString, reps: "8", weight: "",
+                     isWarmup: false, isCompleted: false),
+        ])
     }
 }
 
@@ -426,4 +535,5 @@ private struct SetDraft: Identifiable {
     var reps: String
     var weight: String
     var isWarmup: Bool
+    var isCompleted: Bool
 }
