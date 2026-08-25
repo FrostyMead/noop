@@ -3,6 +3,20 @@ package com.noop.data
 import org.json.JSONArray
 import org.json.JSONObject
 
+/** Shared rest-timer preference used by the strength logger on every platform. */
+object StrengthRestTimer {
+    const val PREFS_KEY = "strength.restSeconds"
+    const val DEFAULT_SECONDS = 90
+    val ALLOWED_SECONDS = listOf(30, 60, 90, 120, 180, 300)
+
+    fun normalized(seconds: Int): Int = seconds.takeIf { it in ALLOWED_SECONDS } ?: DEFAULT_SECONDS
+
+    fun next(seconds: Int): Int {
+        val index = ALLOWED_SECONDS.indexOf(normalized(seconds))
+        return ALLOWED_SECONDS[(index + 1) % ALLOWED_SECONDS.size]
+    }
+}
+
 /** Versioned local collection of reusable strength templates. */
 data class StrengthRoutineLibrary(
     val version: Int = CURRENT_VERSION,
