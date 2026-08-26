@@ -2509,4 +2509,10 @@
     <!-- Today activity list: the night as its own row. -->
     <string name="today_activity_sleep">Sleep</string>
     <string name="today_action_open_sleep">Open sleep detail</string>
+    <!-- Start-a-workout picker: tabs and list chrome. -->
+    <string name="workout_start_tab_activity">Activity</string>
+    <string name="workout_start_tab_recovery">Recovery</string>
+    <string name="workout_start_recent">Recent</string>
+    <string name="workout_start_all_activities">All activities</string>
+    <string name="workout_start_no_match">No activity matches that search.</string>
 </resources>

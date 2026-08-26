@@ -122,6 +122,32 @@ object ExerciseTypes {
         "Wheelchair" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
         "Gaming" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
         "Motor racing" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        // RECOVERY activities. Deliberate, restorative time that is worth logging beside training: the
+        // strap is recording through it, so a sauna or an ice bath produces a real HR trace and a real
+        // window, and having it on the day's timeline is what lets anyone see it next to the session it
+        // followed. Health Connect enumerates none of them, so each rides a nearby type for writeback and
+        // keeps its own label; none has a route, so all stay out of DISTANCE_TYPES and default GPS off.
+        //
+        // They are also what [com.noop.analytics.WorkoutSport.RECOVERY_ACTIVITIES] lists, which is what
+        // gives the picker its Recovery tab. Adding one here without adding it there leaves it reachable
+        // only by search, so keep the two in step.
+        "Sauna" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Steam room" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Ice bath" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Cold plunge" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Contrast therapy" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Cryotherapy" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Massage" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Percussive therapy" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Compression therapy" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Float therapy" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Foam rolling" to EX.EXERCISE_TYPE_STRETCHING,
+        "Mobility" to EX.EXERCISE_TYPE_STRETCHING,
+        "Breathwork" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Physical therapy" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Chiropractic" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Spa" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Nap" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
     )
 
     /** Types where a route makes sense -> GPS defaults on. */

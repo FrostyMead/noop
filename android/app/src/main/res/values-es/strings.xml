@@ -2483,4 +2483,10 @@
     <!-- Today activity list: the night as its own row. -->
     <string name="today_activity_sleep">Sueño</string>
     <string name="today_action_open_sleep">Abrir detalles del sueño</string>
+    <!-- Start-a-workout picker: tabs and list chrome. -->
+    <string name="workout_start_tab_activity">Actividad</string>
+    <string name="workout_start_tab_recovery">Recuperación</string>
+    <string name="workout_start_recent">Recientes</string>
+    <string name="workout_start_all_activities">Todas las actividades</string>
+    <string name="workout_start_no_match">Ninguna actividad coincide con esa búsqueda.</string>
 </resources>

@@ -33,6 +33,39 @@ object WorkoutSport {
     fun exerciseTypeForName(name: String): Int =
         (all.firstOrNull { it.name.equals(name.trim(), ignoreCase = true) } ?: default).exerciseType
 
+    /**
+     * Restorative activities, split out so the picker can offer them as their own tab.
+     *
+     * The distinction is what the activity is FOR, not how hard it is: these are deliberate recovery —
+     * heat, cold, bodywork, breath — logged so the day's timeline shows the recovery beside the training
+     * it followed. Yoga and Pilates stay on the Activity side despite being restorative in spirit, because
+     * they are worked sessions that move heart rate the way training does; Stretching and Mobility sit here
+     * because they do not.
+     *
+     * A NAME set rather than a flag on [Sport], because [Sport] is built from the Health Connect type
+     * catalogue and most of these share EXERCISE_TYPE_OTHER_WORKOUT — a type-keyed split could not tell
+     * a sauna from a bowling alley. Names in [com.noop.ingest.ExerciseTypes.EXTRA] must match exactly.
+     */
+    val RECOVERY_ACTIVITIES: Set<String> = setOf(
+        "Sauna", "Steam room", "Ice bath", "Cold plunge", "Contrast therapy", "Cryotherapy",
+        "Massage", "Percussive therapy", "Compression therapy", "Float therapy",
+        "Foam rolling", "Mobility", "Stretching", "Breathwork", "Meditation",
+        "Physical therapy", "Chiropractic", "Spa", "Nap",
+    )
+
+    /** Whether [sportName] is a restorative activity. Case-insensitive, whitespace-trimmed, so a
+     *  free-typed name from the manual editor classifies the same way a picked one does. */
+    fun isRecovery(sportName: String): Boolean {
+        val q = sportName.trim()
+        return RECOVERY_ACTIVITIES.any { it.equals(q, ignoreCase = true) }
+    }
+
+    /** The picker's Recovery tab, in catalogue order. */
+    val recovery: List<Sport> get() = all.filter { isRecovery(it.name) }
+
+    /** The picker's Activity tab — everything else, in catalogue order. */
+    val activity: List<Sport> get() = all.filterNot { isRecovery(it.name) }
+
     /** Sports where a step count is meaningful — feet on the ground — so the workout summary can show
      *  steps (#398). Deliberately narrow: outdoor + treadmill run/walk and hiking, NOT cycling/rowing/
      *  swimming (no footfalls) or gym/court sports (a step tally would be noise). Kept in lockstep with

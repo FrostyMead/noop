@@ -2482,4 +2482,10 @@
     <!-- Today activity list: the night as its own row. -->
     <string name="today_activity_sleep">Sommeil</string>
     <string name="today_action_open_sleep">Ouvrir les détails du sommeil</string>
+    <!-- Start-a-workout picker: tabs and list chrome. -->
+    <string name="workout_start_tab_activity">Activité</string>
+    <string name="workout_start_tab_recovery">Récupération</string>
+    <string name="workout_start_recent">Récents</string>
+    <string name="workout_start_all_activities">Toutes les activités</string>
+    <string name="workout_start_no_match">Aucune activité ne correspond à cette recherche.</string>
 </resources>

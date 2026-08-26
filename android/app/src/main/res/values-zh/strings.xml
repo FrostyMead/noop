@@ -2397,4 +2397,10 @@
     <!-- Today activity list: the night as its own row. -->
     <string name="today_activity_sleep">睡眠</string>
     <string name="today_action_open_sleep">打开睡眠详情</string>
+    <!-- Start-a-workout picker: tabs and list chrome. -->
+    <string name="workout_start_tab_activity">活动</string>
+    <string name="workout_start_tab_recovery">恢复</string>
+    <string name="workout_start_recent">最近</string>
+    <string name="workout_start_all_activities">全部活动</string>
+    <string name="workout_start_no_match">没有匹配的活动。</string>
 </resources>

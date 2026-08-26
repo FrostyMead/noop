@@ -1,6 +1,7 @@
 package com.noop.ui
 
 import com.noop.R
+import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -8,20 +9,23 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -58,9 +62,22 @@ import kotlinx.coroutines.delay
 fun StartWorkoutSheet(vm: AppViewModel, onDismiss: () -> Unit) {
     val context = LocalContext.current
     var query by remember { mutableStateOf("") }
+    var tab by remember { mutableStateOf(StartTab.ACTIVITY) }
     var selected by remember { mutableStateOf<Sport>(WorkoutSport.default) }
     var gpsOn by remember(selected) { mutableStateOf(selected.isDistanceSport) }
-    val filtered = WorkoutSport.all.filter { it.name.contains(query, ignoreCase = true) }
+    // A search spans the WHOLE catalogue, not the active tab: someone typing "sauna" from the Activity tab
+    // means they want a sauna, and returning nothing because it lives on the other tab would read as the
+    // activity being missing. With no query, the tab decides the list.
+    val filtered = remember(query, tab) {
+        if (query.isNotBlank()) {
+            WorkoutSport.all.filter { it.name.contains(query, ignoreCase = true) }
+        } else {
+            when (tab) {
+                StartTab.ACTIVITY -> WorkoutSport.activity
+                StartTab.RECOVERY -> WorkoutSport.recovery
+            }
+        }
+    }
     // #297: the user's last selections, one tap away above the full catalogue. Only catalogue-resolvable
     // recents show here — a live start selects a typed [Sport], and the shared store can hold free-typed
     // names from the manual add/edit picker. Hidden once the user starts searching.
@@ -91,65 +108,149 @@ fun StartWorkoutSheet(vm: AppViewModel, onDismiss: () -> Unit) {
         return
     }
 
-    AlertDialog(
+    // A full-height surface, not the old AlertDialog. The catalogue is ~100 activities and the dialog gave
+    // it a 240dp window — about five rows — so choosing anything but a recent meant scrolling a letterbox.
+    // A dialog also cannot hold a tab strip without crowding out the list it is filtering.
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text(uiString(R.string.l10n_workout_start_start_a_workout_32caf94d)) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = query, onValueChange = { query = it },
-                    label = { Text(uiString(R.string.l10n_workout_start_search_sport_004b7928)) }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Column(
-                    modifier = Modifier.heightIn(max = 240.dp)
-                        .simpleVerticalScrollbar(sportScroll)
-                        .verticalScroll(sportScroll),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(modifier = Modifier.fillMaxSize(), color = Palette.surfaceBase) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Metrics.screenPadding, vertical = Metrics.gap),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (recents.isNotEmpty()) {
-                        Overline("Recent", modifier = Modifier.padding(top = 6.dp))
-                        recents.forEach { sp ->
+                    Text(
+                        uiString(R.string.l10n_workout_start_start_a_workout_32caf94d),
+                        style = NoopType.headline,
+                        color = Palette.textPrimary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = uiString(R.string.l10n_workout_start_cancel_77dfd213),
+                            tint = Palette.textSecondary,
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = Metrics.screenPadding),
+                    verticalArrangement = Arrangement.spacedBy(Metrics.space12),
+                ) {
+                    OutlinedTextField(
+                        value = query, onValueChange = { query = it },
+                        label = { Text(uiString(R.string.l10n_workout_start_search_sport_004b7928)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    // Training and recovery are different intents, and a single alphabetical run buried
+                    // the restorative ones among ~85 sports. Hidden while searching: a query already spans
+                    // both tabs, and a tab strip that filters the results of a filter is a way to look at
+                    // an empty list and think the activity does not exist.
+                    if (query.isBlank()) {
+                        SegmentedPillControl(
+                            items = StartTab.entries,
+                            selection = tab,
+                            label = { uiString(it.labelRes) },
+                            onSelect = { tab = it },
+                            adaptsToAvailableWidth = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .simpleVerticalScrollbar(sportScroll)
+                            .verticalScroll(sportScroll),
+                    ) {
+                        if (recents.isNotEmpty() && tab == StartTab.ACTIVITY) {
+                            Overline(uiString(R.string.workout_start_recent), modifier = Modifier.padding(top = 6.dp))
+                            recents.forEach { sp ->
+                                StartSportRow(sp, isSelected = sp == selected) {
+                                    selected = sp; gpsOn = sp.isDistanceSport
+                                }
+                            }
+                            Overline(uiString(R.string.workout_start_all_activities), modifier = Modifier.padding(top = 6.dp))
+                        }
+                        if (filtered.isEmpty()) {
+                            Text(
+                                uiString(R.string.workout_start_no_match),
+                                style = NoopType.footnote,
+                                color = Palette.textTertiary,
+                                modifier = Modifier.padding(vertical = Metrics.space12),
+                            )
+                        }
+                        filtered.forEach { sp ->
                             StartSportRow(sp, isSelected = sp == selected) {
                                 selected = sp; gpsOn = sp.isDistanceSport
                             }
                         }
-                        Overline("All activities", modifier = Modifier.padding(top = 6.dp))
                     }
-                    filtered.forEach { sp ->
-                        StartSportRow(sp, isSelected = sp == selected) {
-                            selected = sp; gpsOn = sp.isDistanceSport
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Metrics.screenPadding)
+                        .padding(bottom = Metrics.gap),
+                    verticalArrangement = Arrangement.spacedBy(Metrics.space10),
+                ) {
+                    // A sauna has no route, so the GPS control is not just off for a recovery activity —
+                    // it is meaningless, and a dead switch invites the user to wonder what it would do.
+                    if (!WorkoutSport.isRecovery(selected.name)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                uiString(R.string.l10n_workout_start_track_gps_route_133861c5),
+                                style = NoopType.body,
+                                color = Palette.textPrimary,
+                            )
+                            Spacer(Modifier.weight(1f))
+                            Switch(checked = gpsOn, onCheckedChange = { gpsOn = it })
                         }
                     }
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                ) {
-                    Text(uiString(R.string.l10n_workout_start_track_gps_route_133861c5), style = NoopType.body, color = Palette.textPrimary)
-                    Spacer(Modifier.weight(1f))
-                    Switch(checked = gpsOn, onCheckedChange = { gpsOn = it })
+                    Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            // #297: a confirmed start is a real selection — fold it into the recents
+                            // (recorded even if the GPS permission is then denied; the workout still
+                            // starts route-less, #101).
+                            RecentSportsPrefs.record(context, selected.name)
+                            if (gpsOn && !WorkoutSport.isRecovery(selected.name)) {
+                                // Requests location, then starts + opens the live workout in the
+                                // callback (#101).
+                                startWithGps()
+                            } else {
+                                vm.startWorkout(selected, gpsEnabled = false)
+                                showLiveWorkout = true
+                            }
+                        },
+                    ) {
+                        Text(uiString(R.string.l10n_workout_start_start_selected_name_10603889, selected.name))
+                    }
                 }
             }
-        },
-        confirmButton = {
-            Button(onClick = {
-                // #297: a confirmed start is a real selection — fold it into the recents (recorded even
-                // if the GPS permission is then denied; the workout still starts route-less, #101).
-                RecentSportsPrefs.record(context, selected.name)
-                if (gpsOn) {
-                    startWithGps() // requests location, then starts + opens live workout in the callback (#101)
-                } else {
-                    vm.startWorkout(selected, gpsEnabled = false)
-                    showLiveWorkout = true
-                }
-            }) {
-                Text(uiString(R.string.l10n_workout_start_start_selected_name_10603889, selected.name))
-            }
-        },
-        dismissButton = {
-            OutlinedButton(onClick = onDismiss) { Text(uiString(R.string.l10n_workout_start_cancel_77dfd213)) }
-        },
-    )
+        }
+    }
+}
+
+/**
+ * The picker's two intents: training, and deliberate recovery.
+ *
+ * Two rather than WHOOP's fuller category set, because the split that actually helps is intent — the rest
+ * of the catalogue is one alphabetical run whichever way it is sliced, and search covers finding a
+ * specific sport. Recovery is the tab worth having because those activities are otherwise scattered
+ * through ~85 sports with nothing to mark them as the same kind of thing.
+ */
+private enum class StartTab(@StringRes val labelRes: Int) {
+    ACTIVITY(R.string.workout_start_tab_activity),
+    RECOVERY(R.string.workout_start_tab_recovery),
 }
 
 /** One tappable sport row — shared by the #297 Recent block and the full catalogue list. */
