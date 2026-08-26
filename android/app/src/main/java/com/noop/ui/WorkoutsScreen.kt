@@ -326,7 +326,6 @@ fun WorkoutsScreen(vm: AppViewModel, onOpenDetail: (WorkoutRow) -> Unit = {}) {
             }
             item {
             SessionsSection(
-                vm = vm,
                 rows = windowRows,
                 onOpenDetail = onOpenDetail,
                 selectionMode = selectionMode,
@@ -1174,7 +1173,6 @@ private fun ZoneStat(zone: Int, minutes: Double, total: Double, modifier: Modifi
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SessionsSection(
-    vm: AppViewModel,
     rows: List<WorkoutRow>,
     selectionMode: Boolean,
     selectedKeys: Set<String>,
