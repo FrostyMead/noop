@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,11 +40,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.R
 import com.noop.analytics.HeartRateRecovery
 import com.noop.analytics.HrZoneSet
+import com.noop.analytics.RouteMath
 import com.noop.analytics.TimeInZone
 import com.noop.analytics.WorkoutSport
 import com.noop.data.StrengthWorkout
 import com.noop.data.WorkoutRow
+import com.noop.ingest.RouteExport
 import java.util.Locale
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -166,6 +172,7 @@ fun WorkoutDetailScreen(
         WorkoutHrSection(row = row, curve = hrCurve)
         WorkoutZoneSection(row = row, timeInZone = timeInZone, zoneSet = zoneSet, peers = peers)
         WorkoutKeyStatistics(row = row, peers = peers, steps = steps)
+        WorkoutRouteExport(row)
         hrr?.let { HeartRateRecoveryCard(it) }
         StrengthWorkout.decode(row.strengthJSON)?.let {
             StrengthDetailCard(it, UnitPrefs.system(LocalContext.current))
@@ -221,7 +228,10 @@ private fun WorkoutDetailHeader(row: WorkoutRow?, onBack: () -> Unit) {
                     maxLines = 1,
                 )
                 Text(
-                    timeRangeLabel(row.startTs, row.endTs),
+                    listOfNotNull(
+                        timeRangeLabel(row.startTs, row.endTs),
+                        hmsDuration(row.durationS ?: (row.endTs - row.startTs).toDouble()),
+                    ).joinToString(" · "),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                     maxLines = 1,
@@ -288,6 +298,19 @@ private fun WorkoutHrSection(row: WorkoutRow, curve: List<Double>) {
                 HrReadout(uiString(R.string.trends_avg), row.avgHr ?: (curve.sum() / curve.size).roundToInt(), Modifier.weight(1f))
                 HrReadout(uiString(R.string.trends_peak), row.maxHr ?: hi, Modifier.weight(1f))
                 HrReadout(uiString(R.string.trends_low), lo, Modifier.weight(1f))
+            }
+            // A manually edited average can disagree with the captured trace while the imported Effort
+            // and zone split still describe that original trace. The old detail sheet disclosed that
+            // distinction; keep it on the replacement page so the new surface never implies the graph
+            // was recomputed from the edited headline number.
+            val traceMean = curve.sum() / curve.size
+            val captured = row.strain != null || !row.zonesJSON.isNullOrEmpty()
+            if (captured && row.avgHr != null && abs(row.avgHr - traceMean) > 3.0) {
+                Text(
+                    uiString(R.string.l10n_workouts_screen_the_average_above_was_edited_the_0a7881f0),
+                    style = NoopType.footnote,
+                    color = Palette.textTertiary,
+                )
             }
         }
     }
@@ -390,19 +413,26 @@ private fun WorkoutZoneSection(
 private fun sharePercent(part: Double, total: Double): Int =
     if (total <= 0.0) 0 else ((part / total) * 100.0).roundToInt()
 
-/** Calories and average HR against the same sport's 30-day mean. */
+/** Calories, average HR, distance and steps against the same sport's 30-day mean where available. */
 @Composable
 private fun WorkoutKeyStatistics(row: WorkoutRow, peers: List<WorkoutRow>, steps: Int?) {
     val kcal = row.energyKcal
     val avgHr = row.avgHr
-    if (kcal == null && avgHr == null && steps == null) return
+    val distanceM = row.distanceM?.takeIf { it > 0.0 }
+    // Activity-file imports can carry an authoritative per-session count. Prefer it over a derived strap
+    // counter, but retain the latter for on-foot sessions whose row predates the workout.steps column.
+    val shownSteps = row.steps ?: steps
+    if (kcal == null && avgHr == null && distanceM == null && shownSteps == null) return
     val kcalBase = sessionBaseline(peers.mapNotNull { it.energyKcal })
     val hrBase = sessionBaseline(peers.mapNotNull { it.avgHr?.toDouble() })
+    val distanceBase = sessionBaseline(peers.mapNotNull { it.distanceM?.takeIf { m -> m > 0.0 } })
+    val stepsBase = sessionBaseline(peers.mapNotNull { it.steps?.toDouble() })
+    val units = UnitPrefs.system(LocalContext.current)
 
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Overline(uiString(R.string.workout_detail_key_statistics), modifier = Modifier.weight(1f))
-            if (kcalBase != null || hrBase != null) {
+            if (kcalBase != null || hrBase != null || distanceBase != null || stepsBase != null) {
                 Text(
                     uiString(R.string.workout_detail_vs_sport_average),
                     style = NoopType.footnote,
@@ -410,31 +440,96 @@ private fun WorkoutKeyStatistics(row: WorkoutRow, peers: List<WorkoutRow>, steps
                 )
             }
         }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-            if (kcal != null) {
-                KeyStatTile(
-                    icon = Icons.Filled.LocalFireDepartment,
-                    label = uiString(R.string.workout_detail_calories),
-                    value = String.format(Locale.getDefault(), "%,d", kcal.roundToInt()),
-                    unit = uiString(R.string.workout_detail_cals),
-                    delta = kcalBase?.let {
-                        uiString(R.string.workout_detail_cals_delta, abs(kcal - it).roundToInt())
-                    },
-                    direction = metricDirection(kcal, kcalBase, epsilon = 5.0),
-                    modifier = Modifier.weight(1f),
-                )
+        if (kcal != null || avgHr != null) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Metrics.gap)) {
+                if (kcal != null) {
+                    KeyStatTile(
+                        icon = Icons.Filled.LocalFireDepartment,
+                        label = uiString(R.string.workout_detail_calories),
+                        value = String.format(Locale.getDefault(), "%,d", kcal.roundToInt()),
+                        unit = uiString(R.string.workout_detail_cals),
+                        delta = kcalBase?.let {
+                            uiString(R.string.workout_detail_cals_delta, abs(kcal - it).roundToInt())
+                        },
+                        direction = metricDirection(kcal, kcalBase, epsilon = 5.0),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (avgHr != null) {
+                    KeyStatTile(
+                        icon = Icons.Filled.MonitorHeart,
+                        label = uiString(R.string.workout_detail_avg_hr_label),
+                        value = avgHr.toString(),
+                        unit = uiString(R.string.workout_detail_bpm_unit),
+                        delta = hrBase?.let {
+                            uiString(R.string.workout_detail_bpm, abs(avgHr - it).roundToInt())
+                        },
+                        direction = metricDirection(avgHr.toDouble(), hrBase, epsilon = 1.0),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
-            if (avgHr != null) {
-                KeyStatTile(
-                    icon = Icons.Filled.MonitorHeart,
-                    label = uiString(R.string.workout_detail_avg_hr_label),
-                    value = avgHr.toString(),
-                    unit = uiString(R.string.workout_detail_bpm_unit),
-                    delta = hrBase?.let {
-                        uiString(R.string.workout_detail_bpm, abs(avgHr - it).roundToInt())
-                    },
-                    direction = metricDirection(avgHr.toDouble(), hrBase, epsilon = 1.0),
+        }
+        if (distanceM != null || shownSteps != null) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Metrics.gap)) {
+                if (distanceM != null) {
+                    KeyStatTile(
+                        icon = Icons.Filled.Route,
+                        label = uiString(R.string.l10n_live_screen_distance_42320809),
+                        value = UnitFormatter.distanceFromKilometers(distanceM / 1000.0, units),
+                        delta = distanceBase?.let {
+                            UnitFormatter.distanceFromKilometers(abs(distanceM - it) / 1000.0, units)
+                        },
+                        direction = metricDirection(distanceM, distanceBase, epsilon = 10.0),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (shownSteps != null) {
+                    KeyStatTile(
+                        icon = Icons.AutoMirrored.Filled.DirectionsWalk,
+                        label = uiString(R.string.l10n_health_screen_steps_cdde4f20),
+                        value = String.format(Locale.getDefault(), "%,d", shownSteps),
+                        delta = stepsBase?.let {
+                            String.format(Locale.getDefault(), "%,d", abs(shownSteps - it).roundToInt())
+                        },
+                        direction = metricDirection(shownSteps.toDouble(), stepsBase, epsilon = 10.0),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Restore the route export carried by the superseded detail sheet. Nothing is uploaded: the existing
+ *  [RouteExportShare] writes a temporary on-device GPX/FIT file and opens Android's share chooser. */
+@Composable
+private fun WorkoutRouteExport(row: WorkoutRow) {
+    val encoded = row.routePolyline ?: return
+    val track = remember(encoded) { RouteMath.decode(encoded) }
+    if (track.size < 2) return
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    NoopCard {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
+            Overline(uiString(R.string.l10n_live_screen_distance_42320809))
+            Text(
+                uiString(R.string.l10n_settings_screen_export_0a116345),
+                style = NoopType.subhead,
+                color = Palette.textPrimary,
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Metrics.space12)) {
+                NoopButton(
+                    text = "GPX",
+                    kind = NoopButtonKind.Secondary,
                     modifier = Modifier.weight(1f),
+                    onClick = { scope.launch { RouteExportShare.share(context, RouteExport.Format.GPX, track, row) } },
+                )
+                NoopButton(
+                    text = "FIT",
+                    kind = NoopButtonKind.Secondary,
+                    modifier = Modifier.weight(1f),
+                    onClick = { scope.launch { RouteExportShare.share(context, RouteExport.Format.FIT, track, row) } },
                 )
             }
         }
