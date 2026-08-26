@@ -184,7 +184,7 @@ internal fun NightNavHeader(
         val bedText = timeFmt.format(Date(currentDraft.startTs * 1000L))
         val wakeText = timeFmt.format(Date(currentDraft.endTs * 1000L))
         val validated = currentDraft.validatedWindow(System.currentTimeMillis() / 1000L)
-        val blockShape2 = RoundedCornerShape(Metrics.cornerSm)
+        val blockShape2 = RoundedCornerShape(Metrics.cornerMd)
         androidx.compose.material3.AlertDialog(
             onDismissRequest = {
                 showTimeChoice = false
@@ -462,7 +462,7 @@ internal fun NightNavHeader(
     }
 
     // #1311: nightLabel is now the calendar-aware label passed in (was nightRelativeLabel(offset)).
-    val blockShape = RoundedCornerShape(Metrics.cornerSm)
+    val blockShape = RoundedCornerShape(Metrics.cornerMd)
     val clockParts = clock?.split(" · ", limit = 2)
     val dateLabel = clockParts?.getOrNull(0)
     val timeLabel = clockParts?.getOrNull(1)

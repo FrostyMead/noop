@@ -96,14 +96,29 @@ data class PaletteTokens(
     // + heroLabel flip with it so the edge stays subtle and the source-badge text stays readable in both.
     val heroFill: Color,
     val heroBorder: Color,
+    // The liquid VESSEL's own materials (LiquidRender). These were four hardcoded near-black literals
+    // inside the renderer, ported as-is from the Swift original, so on the warm-paper LIGHT theme every
+    // hero score rendered as a charcoal disc on cream. Tokenised here so the vessel is a dark well on the
+    // dark canvas and a pale glass bowl on paper, and so the renderer holds no raw colour of its own.
+    // [vesselWell] is the empty (unfilled) body, [vesselTrack] its opaque twin for the horizontal tube,
+    // [vesselInnerShadow] the top-inside falloff and [vesselHighlight] the soft top-left glass catch.
+    val vesselWell: Color,
+    val vesselTrack: Color,
+    val vesselInnerShadow: Color,
+    val vesselHighlight: Color,
 )
 
 // WHOOP-reset dark palette (gold killed 2026-06-22). Values match StrandPalette.swift's DARK
 // Titanium column byte-for-byte: blue-grey canvas, WHOOP red→yellow→green recovery, green Charge,
-// blue Effort, slate Rest, amber Stress. NO gold anywhere — accent/gold tokens point to WHOOP blue.
+// blue Effort, slate Rest, amber Stress. NO gold anywhere — the legacy `gold*` tokens hold WHOOP blue,
+// and `accent` is mint (see below), not blue as an earlier revision of this line claimed.
 val DarkTokens = PaletteTokens(
-    // Neutral WHOOP-like charcoal hierarchy: colour belongs to data, not the screen chrome.
-    surfaceBase = Color(0xFF101619), surfaceRaised = Color(0xFF292D30), surfaceOverlay = Color(0xFF202528),
+    // Neutral WHOOP-like charcoal hierarchy: colour belongs to data, not the screen chrome. The four
+    // surfaces are an ELEVATION LADDER and must stay monotonically lighter in that order — base (canvas)
+    // < raised (card) < overlay (modal/sheet, floats above a card) < inset (recessed control fill, reads
+    // on either). surfaceOverlay used to be 0xFF202528, DARKER than the card it covers, so every dialog
+    // and bottom sheet sank into the page instead of lifting off it.
+    surfaceBase = Color(0xFF101619), surfaceRaised = Color(0xFF292D30), surfaceOverlay = Color(0xFF2F3438),
     surfaceInset = Color(0xFF34393D), hairline = Color(0xFF394045), hairlineStrong = Color(0xFF4B5359),
     textPrimary = Color(0xFFF4F6F7), textSecondary = Color(0xFFC5C9CC), textTertiary = Color(0xFF90969B),
     glowAmbient = Color(0xFF3A2D0A),
@@ -128,12 +143,27 @@ val DarkTokens = PaletteTokens(
     titaniumTop = Color(0xFFF1F3F5), titaniumMid = Color(0xFFC9CFD4), titaniumLow = Color(0xFF969DA4), titaniumDeep = Color(0xFF6B737B),
     tipCore = Color(0xFFFFFFFF),
     heroFill = Color(0xCC0D0E14), heroBorder = Color(0x1CFFFFFF),
+    // Dark vessel: the original near-black well, now a token. Values are byte-identical to the literals
+    // LiquidRender carried, so the dark theme's hero is unchanged.
+    vesselWell = Color(0x8C0A0B10), vesselTrack = Color(0xFF0E0E12),
+    vesselInnerShadow = Color(0x4D000000), vesselHighlight = Color(0x17FFFFFF),
 )
 
 val LightTokens = PaletteTokens(
     surfaceBase = Color(0xFFEAE3D4), surfaceRaised = Color(0xFFFFFFFF), surfaceOverlay = Color(0xFFFFFFFF),
     surfaceInset = Color(0xFFDFD8C8), hairline = Color(0xFFD8D0BD), hairlineStrong = Color(0xFFC7BCA4),
-    textPrimary = Color(0xFF1A2230), textSecondary = Color(0xFF4C5564), textTertiary = Color(0xFF7C8696),
+    // Light text ladder, re-valued for WCAG AA. The spec's tertiary (#7C8696) scored 2.88:1 on this canvas
+    // and 3.68:1 on a white card — under the 4.5:1 AA bar for normal text, and on the canvas under even the
+    // 3:1 large-text floor, across ~690 call sites that are mostly captions, units and footnotes. Two things
+    // compounded: the token was chosen against the spec's paler paper (#F4F1EA, where it still only reaches
+    // 3.26:1), and Android shipped a deeper tan canvas. Tertiary now clears AA on both surfaces, and
+    // secondary deepens with it so the three steps stay visibly distinct instead of collapsing together.
+    //   primary   #1A2230 → 12.50 canvas / 15.96 card
+    //   secondary #3E4757 →  7.33 canvas /  9.36 card   (was #4C5564, 5.89 / 7.52)
+    //   tertiary  #5A6472 →  4.70 canvas /  6.00 card   (was #7C8696, 2.88 / 3.68 — failed)
+    // The Apple twin (NoopVisualStyle.tertiaryText, light #7D808A) has the same failure and is NOT changed
+    // here; text colour is pixel-level, which the parity contract leaves to each platform.
+    textPrimary = Color(0xFF1A2230), textSecondary = Color(0xFF3E4757), textTertiary = Color(0xFF5A6472),
     glowAmbient = Color(0xFFF0E4C0),
     // Light chrome accent → brand mint, parity with iOS #1068 (NoopVisualStyle.mint/mintGlow, light side).
     // accentMuted is a pale mint tint (green-shifted analog of the old pale blue 0xFFE4ECF6); note Android's
@@ -159,6 +189,12 @@ val LightTokens = PaletteTokens(
     // Frosted WHITE hero in light mode (#1160), subtle dark edge. (Hero text uses the flip-able text*
     // tokens now, so no separate label token is needed.)
     heroFill = Color(0xD9FFFFFF), heroBorder = Color(0x1A000000),
+    // Light vessel: a pale glass bowl on paper rather than the charcoal disc the hardcoded near-blacks
+    // produced. The well is a warm translucent shade so the canvas reads through the empty part, the
+    // inner shadow drops to a whisper (a 30% black falloff looked like grime on cream), and the glass
+    // catch strengthens, because a white highlight has to work harder against a light body.
+    vesselWell = Color(0x66B8AF9B), vesselTrack = Color(0xFFDFD8C8),
+    vesselInnerShadow = Color(0x1F000000), vesselHighlight = Color(0x8CFFFFFF),
 )
 
 // MARK: - Chart style (data-viz colour mode) + the Classic throwback ramps

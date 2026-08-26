@@ -643,7 +643,7 @@ private fun DaytimeStressLine(hours: List<DaytimeStress.HourPoint>) {
         modifier = Modifier
             .fillMaxWidth()
             .height(100.dp)
-            .clip(RoundedCornerShape(Metrics.cornerSm))
+            .clip(RoundedCornerShape(Metrics.cornerMd))
             .semantics { contentDescription = daytimeLineDescription(hours) }
             .pointerInput(hours) {
                 // Single gesture handler: first touch shows the crosshair; dragging scrubs

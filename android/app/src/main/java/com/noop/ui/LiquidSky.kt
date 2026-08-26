@@ -245,15 +245,30 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.renderLiquidSky(
 private val liquidSettleColor: Color
     get() = Palette.surfaceBase
 
-// MARK: - LiquidSky (animated) — per-frame twinkle + breath
+// MARK: - LiquidSky (animated) — twinkle + breath, published at a fixed cadence
 
 /**
- * The animated time-of-day liquid sky. Drives twinkle + the slow breath of light per frame via
- * `withFrameNanos`. Under Reduce Motion it collapses to the static picture (no frame loop) — matching
- * the house motion rule. [hour] defaults to live local time (hour + minute/60) when null.
+ * How often the animated sky publishes a new frame time.
  *
- * Mirrors the iOS `LiquidSky` view (TimelineView.animation at 20fps → here an unbounded frame loop;
- * only the sinusoid phase matters, so the picture is identical).
+ * iOS drives this view from `TimelineView.animation` at 20fps. The Android port opened an UNBOUNDED
+ * frame loop instead, so on a 90/120 Hz panel it repainted the full viewport — a three-stop gradient,
+ * two light washes and up to 70 twinkling stars — four to six times for every frame iOS draws, all day,
+ * behind the app's most-used screen. Both time-varying layers are slow sinusoids, so matching iOS costs
+ * nothing visually: the picture is identical and the repaint count drops with the frame rate.
+ *
+ * This is the same standdown the hero vessels got ([LiquidVessel]); the sky is the larger win because it
+ * covers the whole screen rather than three small discs. It is also the problem [LiquidSkyStatic] was
+ * added to dodge on the chart tabs — Today simply never got the benefit.
+ */
+private const val SKY_FRAMES_PER_SECOND = 20.0
+
+/**
+ * The animated time-of-day liquid sky. Drives twinkle + the slow breath of light via `withFrameNanos`,
+ * publishing at [SKY_FRAMES_PER_SECOND]. Under Reduce Motion it collapses to the static picture (no frame
+ * loop) — matching the house motion rule. [hour] defaults to live local time (hour + minute/60) when null.
+ *
+ * Mirrors the iOS `LiquidSky` view (TimelineView.animation at 20fps); only the sinusoid phase matters, so
+ * the picture is identical.
  */
 @Composable
 fun LiquidSky(hour: Double? = null, modifier: Modifier = Modifier) {
@@ -269,13 +284,24 @@ fun LiquidSky(hour: Double? = null, modifier: Modifier = Modifier) {
 
     // Monotonic seconds clock: accumulate raw frame nanos → seconds. Only the sinusoid phase matters
     // (the iOS `now` is seconds-since-reference), so a from-zero accumulator gives the same motion.
+    //
+    // The accumulator is a plain local and `seconds` is the only snapshot value, written at most once per
+    // 1/SKY_FRAMES_PER_SECOND. That split is the whole optimisation: a frame between publishes costs the
+    // callback and nothing else — no snapshot write, so no Canvas invalidation and no full-viewport repaint.
     var seconds by remember { mutableDoubleStateOf(0.0) }
     LaunchedEffect(Unit) {
+        val interval = 1.0 / SKY_FRAMES_PER_SECOND
         var last = 0L
+        var elapsed = 0.0
+        var published = 0.0
         while (true) {
             withFrameNanos { frame ->
-                if (last != 0L) seconds += (frame - last) / 1_000_000_000.0
+                if (last != 0L) elapsed += (frame - last) / 1_000_000_000.0
                 last = frame
+                if (elapsed - published >= interval) {
+                    published = elapsed
+                    seconds = elapsed
+                }
             }
         }
     }

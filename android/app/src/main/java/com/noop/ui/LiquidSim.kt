@@ -63,7 +63,6 @@ class LiquidSim(target: Double, private val reduceMotion: Boolean = false) {
     val flecks: MutableList<Fleck> = ArrayList(28)
     val drops: MutableList<Drop> = ArrayList()
 
-    private var nudge: Double = 2.0 + Random.nextDouble(0.0, 5.0)
     private var lastTime: Double? = null
 
     init {
@@ -105,14 +104,14 @@ class LiquidSim(target: Double, private val reduceMotion: Boolean = false) {
         ab += abv * dt; ab = ab.coerceIn(-0.66, 0.66)
 
         energy = min(1.2, energy + (abs(av) + abs(abv)) * dt * 0.07)
-        nudge -= dt
-        if (nudge <= 0.0) {
-            nudge = 3.5 + Random.nextDouble(0.0, 5.0)
-            if (!reduceMotion) {
-                av += (if (Random.nextBoolean()) 1.0 else -1.0) * (0.05 + Random.nextDouble(0.0, 0.08))
-                energy = min(1.2, energy + 0.05)
-            }
-        }
+        // The RANDOM IDLE NUDGE is gone (Android). Every 3.5-8.5s it used to kick `av` and top up
+        // `energy`, which meant a vessel could never reach [settled]: three hero gauges twitched back to
+        // life a dozen times a minute on a dashboard nobody was touching, and no amount of downstream
+        // gating could stand the render loop down. Motion now comes only from real causes — device tilt,
+        // a tap splash, or the fill chasing a new score — so a still phone shows still liquid, which is
+        // both calmer and what a settled glass actually looks like. This is a deliberate Android-only
+        // divergence from the Swift LiquidSim; it is decorative physics, not analytics or stored data,
+        // so it sits outside the cross-platform parity contract.
         val d = this.target - level
         if (abs(d) > 0.0004) {
             level += d * min(1.0, dt * 2.6)
@@ -160,8 +159,12 @@ class LiquidSim(target: Double, private val reduceMotion: Boolean = false) {
     }
 
     /**
-     * True once the liquid has effectively stopped moving — lets a paused clock stand down under
-     * reduce-motion (parity with iOS; not currently consulted by the renderer but kept for fidelity).
+     * True once the liquid has effectively stopped moving: both surface springs at rest, the fill at its
+     * target, and the wave energy decayed to the floor.
+     *
+     * [LiquidVessel] consults this every frame to decide whether to step and redraw at all, so it is now
+     * load-bearing rather than the parity-only property it started as. Anything that re-energises the sim
+     * unconditionally (as the old random idle nudge did) defeats it.
      */
     val settled: Boolean
         get() = abs(av) < 0.01 && abs(abv) < 0.01 && abs(target - level) < 0.001 && energy < 0.03

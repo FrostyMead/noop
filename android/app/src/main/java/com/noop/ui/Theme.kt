@@ -28,18 +28,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// MARK: - Palette — the "Titanium & Gold" re-skin (mirrors StrandDesign/Palette.swift)
+// MARK: - Palette (mirrors StrandDesign/Palette.swift)
 //
-// A premium dark theme built on a deep NAVY canvas (NOT pure black) with per-domain
-// accent "colour worlds": Charge/recovery = GOLD, Effort/strain = amber, Rest/sleep =
-// blue, HRV = teal, high stress = burnt orange. Gold is the dominant brand anchor —
-// no greens anywhere.
+// A neutral CHARCOAL canvas carrying per-domain accent "colour worlds": Charge/recovery = green,
+// Effort/strain = amber, Rest/sleep = blue, Stress = amber. The governing rule is that COLOUR BELONGS
+// TO DATA — chrome (nav, chips, controls, surfaces) stays in the grey family, so the only saturated
+// things on a screen are the scores themselves.
 //
-// PUBLIC API IS FROZEN: every token NAME below is depended on by screens across the
-// app, so the names never change — only the VALUES were re-themed to Titanium & Gold.
-// New tokens (gold/titanium ramps + their gradients) are ADDED at the end of the
-// object; nothing existing was removed or renamed. Hex values mirror the macOS/iOS
-// StrandPalette so all three platforms share one visual language.
+// This header used to describe a "Titanium & Gold" theme: a navy canvas, gold as the dominant brand
+// anchor, "no greens anywhere". None of that is true any more — the gold re-skin was reverted on
+// 2026-06-22 (see the DarkTokens comment) and the chrome accent is mint. The stale description is
+// corrected rather than left in place, because it actively misled anyone reading the palette.
+//
+// PUBLIC API IS FROZEN: every token NAME below is depended on by screens across the app, so names are
+// never removed or renamed — only re-valued. That is why `gold*` and `titanium*` survive as names while
+// holding blue and grey; treat them as legacy aliases, NOT as an instruction to reach for gold.
+// Hex values mirror the macOS/iOS StrandPalette so all three platforms share one visual language.
 
 object Palette {
 
@@ -54,7 +58,9 @@ object Palette {
     val isClassic: Boolean get() = ChartStylePrefs.style == ChartStyle.CLASSIC
     private val classic: ClassicRamp get() = if (isLight) ClassicLight else ClassicDark
 
-    // Surfaces.
+    // Surfaces — an ELEVATION LADDER, monotonically lighter in this order on dark:
+    // base (page canvas) < raised (card) < overlay (dialog/bottom sheet, floats above a card)
+    // < inset (recessed control fill, sits on either). Keep that ordering when re-valuing.
     val surfaceBase get() = active.surfaceBase
     val surfaceRaised get() = active.surfaceRaised
     val surfaceOverlay get() = active.surfaceOverlay
@@ -208,6 +214,13 @@ object Palette {
 
     /** Gauge-tip / sparkline-head core — white on dark, deep ink on light. */
     val tipCore get() = active.tipCore
+
+    // Liquid-vessel materials (LiquidRender). Tokenised so the renderer holds no raw colour and the
+    // hero flips with the theme: a dark well on charcoal, a pale glass bowl on warm paper.
+    val vesselWell get() = active.vesselWell
+    val vesselTrack get() = active.vesselTrack
+    val vesselInnerShadow get() = active.vesselInnerShadow
+    val vesselHighlight get() = active.vesselHighlight
 
     // MARK: - Sampling helpers (mirror StrandPalette.sample / recoveryColor)
 
@@ -396,9 +409,21 @@ object Metrics {
     val sourceBadgeHeight = 18.dp
     // Rounded-premium geometry. Cards use one generous continuous radius so dashboard tiles,
     // settings groups and sheets feel like the same product instead of a mix of small rectangles.
+    //
+    // THE RADIUS SCALE — five rungs, and nothing between them. A screen full of ad-hoc
+    // `RoundedCornerShape(N.dp)` literals (the tree carried fifteen distinct values across ~130 call
+    // sites) is the single cheapest way to make an app look unconsidered: nothing lines up, and no two
+    // nested corners share a centre. Snap to the nearest rung instead of inventing a value.
+    //
+    //   cornerXs   8dp   badges, swatches, micro-chips
+    //   cornerSm  12dp   inline controls, segmented pills, list rows
+    //   cornerMd  16dp   inner panels, nested blocks, tiles inside a card
+    //   cardRadius 24dp  cards, sheets, dialogs — the top-level container radius
+    //   cornerPill 50dp  fully rounded (capsules, discs)
     val cardRadius = 24.dp
     val cornerXs = 8.dp
-    val cornerSm = 16.dp
+    val cornerSm = 12.dp
+    val cornerMd = 16.dp
     val cornerBadge = 8.dp
     val cornerPill = 50.dp
     val cardPadding = 18.dp
@@ -435,6 +460,15 @@ object Metrics {
     val stageSegMinWidth = 2.dp      // width floor so a brief fragment reads as a block, not a hairline
     val stageSegCorner = 1.5.dp      // solid segment rounding
     val stageInsightHeight = 36.dp   // fixed insight slot height — selection never reflows the card
+    // The Health Monitor's vital tile is taller than a Today tile: it carries an icon row, a display-sized
+    // value with its unit, an optional trail and a status pill, where a Today tile carries a label and a
+    // number. Its own token rather than growing [tileHeight], which would stretch every dashboard tile.
+    val vitalTileHeight = 156.dp
+    // ComparisonComponents — the "value against its own baseline" readouts.
+    val rangeBarHeight = 22.dp      // TypicalRangeBar / ZoneRowCard track
+    val rangeBarMinFill = 3.dp      // width floor so a 1% share still reads as a mark, not nothing
+    val barWidth = 14.dp            // LabelledBarChart column
+    val barLabelReserve = 34.dp     // headroom a labelled bar leaves for its value + caption
     val trendStripHeight = 120.dp
     val sparklineHeight = 28.dp
     val segmentBarHeight = 18.dp
@@ -549,12 +583,16 @@ private val NoopMaterialTypography = Typography(
     labelSmall = NoopType.overline,
 )
 
+/** Material's five shape slots, mapped onto the [Metrics] radius scale so a stock M3 component
+ *  (bottom sheet, menu, text field) lands on the same corners the app's own surfaces use. `large` and
+ *  `extraLarge` deliberately collapse onto [Metrics.cardRadius] rather than climbing to 28/32dp: those
+ *  slots back sheets and dialogs, which are containers, and the app has exactly one container radius. */
 private val NoopShapes = Shapes(
-    extraSmall = RoundedCornerShape(10.dp),
-    small = RoundedCornerShape(Metrics.cornerSm),
+    extraSmall = RoundedCornerShape(Metrics.cornerXs),
+    small = RoundedCornerShape(Metrics.cornerMd),
     medium = RoundedCornerShape(Metrics.cardRadius),
-    large = RoundedCornerShape(28.dp),
-    extraLarge = RoundedCornerShape(32.dp),
+    large = RoundedCornerShape(Metrics.cardRadius),
+    extraLarge = RoundedCornerShape(Metrics.cardRadius),
 )
 
 /**

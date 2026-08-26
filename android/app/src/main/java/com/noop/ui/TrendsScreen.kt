@@ -1106,7 +1106,7 @@ private fun SparsePlaceholder(height: Dp = Metrics.chartHeight) {
         modifier = Modifier
             .fillMaxWidth()
             .height(height)
-            .clip(RoundedCornerShape(Metrics.cornerSm))
+            .clip(RoundedCornerShape(Metrics.cornerMd))
             .background(Palette.surfaceInset),
         contentAlignment = Alignment.Center,
     ) {

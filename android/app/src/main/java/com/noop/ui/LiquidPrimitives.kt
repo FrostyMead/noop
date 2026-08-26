@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -28,6 +29,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 
 // MARK: - LiquidPrimitives (the liquid VIEW WRAPPERS + shared components)
 //
@@ -68,6 +70,14 @@ val liquidHeartPink: Color = Color(red = 1f, green = 107f / 255f, blue = 129f / 
  * leave. A tap splashes the liquid (`sim.splash(12)`) and fires a light haptic. Otherwise it poses ONCE
  * with `LiquidSim.posed(value)` — no clock, no motion — so the many small gauges cost nothing per frame.
  *
+ * IDLE STANDDOWN: the live path stops both stepping and redrawing once the liquid is genuinely at rest
+ * ([LiquidSim.settled]) and neither the tilt nor the target has moved. Previously the clock advanced a
+ * snapshot `seconds` unconditionally, so three hero vessels rebuilt their wave paths, flake and gradients
+ * at display rate forever — on a dashboard that is usually just being read, and in an app whose whole
+ * premise is running all day off a phone battery. Settling is also what the motion is supposed to look
+ * like: liquid in a still glass goes flat. Held in the hand it never actually idles, because the tilt
+ * sensor keeps feeding it; put the phone down and it comes to rest, and a tilt, tap or new score wakes it.
+ *
  * Mirrors the iOS `LiquidVessel` view.
  */
 @Composable
@@ -93,15 +103,36 @@ fun LiquidVessel(
             onDispose { LiquidMotion.shared.release() }
         }
 
-        // Monotonic seconds clock (from-zero accumulator; only the sinusoid phase matters — same as
-        // LiquidSky.kt). Drives sim.step + render.
-        var seconds by remember { mutableDoubleStateOf(0.0) }
+        // The PUBLISHED frame time. The monotonic accumulator itself lives inside the step loop below as
+        // an ordinary local; only a frame that actually moved the liquid writes it out here. That split is
+        // what makes the idle standdown possible: this is the single snapshot value the Canvas reads, so
+        // when the loop stops publishing, the Canvas stops being invalidated. (Compose ignores a write of
+        // an equal value, so a no-op frame could not wake the draw even if one slipped through.)
+        var renderTime by remember { mutableDoubleStateOf(0.0) }
+        // The step loop runs once (LaunchedEffect(Unit)) but must see the CURRENT value each frame; a
+        // plain capture would freeze the target at whatever the score was on first composition. (The
+        // old code sidestepped this by stepping inside the draw lambda, which is rebuilt per recomposition.)
+        val currentValue by rememberUpdatedState(value)
         LaunchedEffect(Unit) {
             var last = 0L
+            var seconds = 0.0
+            var lastTilt = Double.NaN
             while (true) {
-                withFrameNanos { frame ->
-                    if (last != 0L) seconds += (frame - last) / 1_000_000_000.0
-                    last = frame
+                withFrameNanos { t ->
+                    val dt = if (last != 0L) (t - last) / 1_000_000_000.0 else 0.0
+                    last = t
+                    val tilt = LiquidMotion.shared.tilt
+                    val target = currentValue ?: 0.0
+                    // Idle: at rest, level where it was asked to be, and the world has not moved. Skip the
+                    // step and the publish both — the frame callback itself is all this costs.
+                    val idle = sim.settled &&
+                        abs(target - sim.level) < 1e-4 &&
+                        !lastTilt.isNaN() && abs(tilt - lastTilt) < 1e-4
+                    lastTilt = tilt
+                    if (idle) return@withFrameNanos
+                    seconds += dt
+                    sim.step(now = seconds, tilt = tilt, target = target)
+                    renderTime = seconds
                 }
             }
         }
@@ -120,8 +151,9 @@ fun LiquidVessel(
                     view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 },
         ) {
-            sim.step(now = seconds, tilt = LiquidMotion.shared.tilt, target = value ?: 0.0)
-            with(LiquidRender) { vessel(size = size, sim = sim, now = seconds, tint = tint) }
+            // Reading `renderTime` is what subscribes this draw to the step loop; stepping has already
+            // happened there, so the draw stays a pure render of the sim's current state.
+            with(LiquidRender) { vessel(size = size, sim = sim, now = renderTime, tint = tint) }
         }
     } else {
         // One-shot, cached render — posed at the fill line, no clock, no motion acquire.
