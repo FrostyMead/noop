@@ -79,10 +79,13 @@ class TodayLayoutPrefsTest {
         assertEquals(TodaySection.entries.size, decoded.size)
         assertEquals(
             listOf(
-                // Every missing section's default index precedes yourCards(7), so each inserts before it,
-                // accumulating in default order; the saved yourCards→heartRate order is preserved at the end.
-                TodaySection.HERO, TodaySection.LIVE_SESSION, TodaySection.SYNTHESIS,
-                TodaySection.KEY_METRICS, TodaySection.WORKOUTS, TodaySection.RECOVERY_VITALS,
+                // Sections whose default index precedes yourCards(7) insert before it, accumulating in
+                // default order; the saved yourCards→heartRate pair keeps ITS order, and the three whose
+                // default index is beyond both saved entries append. The leading run tracks defaultOrder,
+                // so it moved when WORKOUTS was promoted above SYNTHESIS/KEY_METRICS — the merge rule is
+                // unchanged, only the sequence it is merging toward.
+                TodaySection.HERO, TodaySection.LIVE_SESSION, TodaySection.WORKOUTS,
+                TodaySection.SYNTHESIS, TodaySection.KEY_METRICS, TodaySection.RECOVERY_VITALS,
                 TodaySection.YOUR_CARDS, TodaySection.HEART_RATE,
                 TodaySection.MENSTRUAL_CYCLE, TodaySection.JOURNAL, TodaySection.ADDED_CARDS,
             ),
@@ -112,13 +115,36 @@ class TodayLayoutPrefsTest {
     @Test
     fun defaultHidden_appliesOnlyWhenNothingWasEverSaved() {
         assertEquals(
-            listOf(TodaySection.RECOVERY_VITALS),
+            listOf(TodaySection.RECOVERY_VITALS, TodaySection.SYNTHESIS),
             TodayLayoutPrefs.decodeHiddenOrDefault(null),
         )
         assertEquals(emptyList<TodaySection>(), TodayLayoutPrefs.decodeHiddenOrDefault(""))
         assertEquals(
             listOf(TodaySection.WORKOUTS),
             TodayLayoutPrefs.decodeHiddenOrDefault("workouts"),
+        )
+    }
+
+    /**
+     * The day's activities come first under the hero.
+     *
+     * Pinned because it is the ordering decision most likely to be undone by accident: WORKOUTS was
+     * fifth, behind two analytical sections, which put the day's own activity below the fold.
+     */
+    @Test
+    fun defaultOrder_putsActivitiesDirectlyBelowTheHero() {
+        val visible = TodaySection.defaultOrder.filterNot { it in TodayLayoutPrefs.defaultHidden }
+        assertEquals(TodaySection.HERO, visible.first())
+        // LIVE_SESSION only renders while a session is actually running, so on a normal day the first
+        // thing under the hero is the activity list.
+        assertEquals(
+            TodaySection.WORKOUTS,
+            visible.first { it != TodaySection.HERO && it != TodaySection.LIVE_SESSION },
+        )
+        assertEquals(
+            "activities must precede the Key Metrics grid",
+            true,
+            visible.indexOf(TodaySection.WORKOUTS) < visible.indexOf(TodaySection.KEY_METRICS),
         )
     }
 

@@ -45,7 +45,12 @@ enum class TodaySection(val raw: String, @StringRes val titleRes: Int) {
         /** The original, hard-coded section order — the default when the layout isn't customised. The
          *  journal widget (#656) is last by default, where it was first added, above the data-sources card. */
         val defaultOrder: List<TodaySection> = listOf(
-            HERO, LIVE_SESSION, SYNTHESIS, KEY_METRICS, WORKOUTS, HEART_RATE, RECOVERY_VITALS, YOUR_CARDS,
+            // WORKOUTS sits directly under the hero: after the three scores, the next thing anyone wants
+            // is WHAT THEY DID that produced them. It used to be fifth, behind Synthesis and the Key
+            // Metrics grid, so the day's own activity was below the fold on most phones while two
+            // analytical layers came first. LIVE_SESSION stays above it because it is transient and
+            // in-progress — it renders only while a session is actually running.
+            HERO, LIVE_SESSION, WORKOUTS, SYNTHESIS, KEY_METRICS, HEART_RATE, RECOVERY_VITALS, YOUR_CARDS,
             MENSTRUAL_CYCLE, JOURNAL, ADDED_CARDS,
         )
     }
@@ -77,10 +82,20 @@ object TodayLayoutPrefs {
      * appear in the Charge breakdown behind the hero ring, as contribution bars that say what each one
      * DID to the score, alongside sleep. Two of them (HRV, resting HR) are Key Metrics tiles as well. So
      * the dashboard was printing the same numbers up to three times, which is most of what made Today feel
-     * long. The richer presentation wins and the duplicate row block goes; the Customise sheet brings it
-     * back for anyone who preferred it inline.
+     * long. The richer presentation wins and the duplicate row block goes.
+     *
+     * SYNTHESIS is the prose read of the day. It sat between the hero and everything else, so a paragraph
+     * came before the numbers it describes — and it says in sentences what the three vessels directly
+     * above it already say in scores. Hidden by default rather than removed, because the greeting and the
+     * data-confidence pill it carries are worth having for anyone who wants the narrative.
+     *
+     * Both stay in the order registry and both come back from Customise — this is a default, not a
+     * deletion.
      */
-    val defaultHidden: List<TodaySection> = listOf(TodaySection.RECOVERY_VITALS)
+    val defaultHidden: List<TodaySection> = listOf(
+        TodaySection.RECOVERY_VITALS,
+        TodaySection.SYNTHESIS,
+    )
 
     /**
      * The hidden set for a stored value, applying [defaultHidden] only when NOTHING was ever saved.
