@@ -1667,10 +1667,15 @@ private fun RecoveryTrendChart(
  * its scale caption (Effort 0–100 or strain 0–21), and a one-line explainer. Mirrors the iOS
  * WorkoutDetailView.effortCard: same colour world, same count-up, same copy. [strain] is the stored
  * 0–100 Effort value; [effortScale] only changes how it is DISPLAYED, never the stored number.
+ *
+ * [baselineStrain] is the same sport's recent mean on the SAME stored 0–100 axis (null when too few
+ * prior sessions exist to mean anything). When present the card adds a direction arrow and the baseline
+ * line, so the number is read against this person's own history rather than in isolation.
  */
 @Composable
-internal fun SessionEffortCard(strain: Double, effortScale: EffortScale) {
+internal fun SessionEffortCard(strain: Double, effortScale: EffortScale, baselineStrain: Double? = null) {
     val shown = UnitFormatter.effortValue(strain, effortScale)
+    val baselineShown = baselineStrain?.let { UnitFormatter.effortValue(it, effortScale) }
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         SectionHeader("Effort", overline = "This session")
         NoopCard(tint = Palette.effortColor) {
@@ -1687,17 +1692,46 @@ internal fun SessionEffortCard(strain: Double, effortScale: EffortScale) {
                                 " scale."
                     },
                 ) {
-                    CountUpText(
-                        value = shown,
-                        format = { oneDecimal(it) },
-                        style = NoopType.number(34f),
-                        color = Palette.effortBright,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
+                    ) {
+                        CountUpText(
+                            value = shown,
+                            format = { oneDecimal(it) },
+                            style = NoopType.number(34f),
+                            color = Palette.effortBright,
+                        )
+                        // The direction against this sport's own recent average, when one exists. Effort is
+                        // neutral - a harder session is not "worse" - so the arrow reads as information and
+                        // the tint follows "more effort is the positive direction".
+                        if (baselineShown != null) {
+                            Text(
+                                when {
+                                    shown > baselineShown + 0.05 -> "▲"
+                                    shown < baselineShown - 0.05 -> "▼"
+                                    else -> "●"
+                                },
+                                style = NoopType.number(10f, weight = FontWeight.Bold),
+                                color = metricDirectionTint(
+                                    metricDirection(shown, baselineShown, epsilon = 0.05),
+                                    higherIsBetter = true,
+                                ),
+                            )
+                        }
+                    }
                     Text(
                         if (effortScale == EffortScale.WHOOP) "strain (0-21)" else "Effort (0-100)",
                         style = NoopType.footnote,
                         color = Palette.textTertiary,
                     )
+                    if (baselineShown != null) {
+                        Text(
+                            uiString(R.string.workout_detail_sport_average, oneDecimal(baselineShown)),
+                            style = NoopType.captionNumber,
+                            color = Palette.textTertiary,
+                        )
+                    }
                 }
                 Text(
                     uiString(R.string.l10n_workouts_screen_this_session_s_contribution_to_the_fe40ab3d),
@@ -1757,25 +1791,6 @@ private fun DetailStrengthStat(label: String, value: String, modifier: Modifier 
     Column(modifier = modifier) {
         Text(label, style = NoopType.overline, color = Palette.textTertiary)
         Text(value, style = NoopType.captionNumber, color = Palette.textPrimary)
-    }
-}
-
-@Composable
-private fun DetailRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Overline(label)
-        Text(
-            value,
-            style = NoopType.body,
-            color = Palette.textPrimary,
-            maxLines = 3,
-            textAlign = TextAlign.End,
-            modifier = Modifier.padding(start = 16.dp),
-        )
     }
 }
 

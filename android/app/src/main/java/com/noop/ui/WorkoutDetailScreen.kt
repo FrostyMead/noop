@@ -243,29 +243,25 @@ private fun WorkoutDetailHeader(row: WorkoutRow?, onBack: () -> Unit) {
     }
 }
 
-/** The session's Effort, against the same sport's recent average. */
+/**
+ * The session's Effort, against the same sport's recent average.
+ *
+ * Delegates to [SessionEffortCard] rather than re-rendering the value. This page originally drew its own
+ * Effort headline, which quietly dropped three things the card it replaced had: the count-up, the scale
+ * caption ("Effort 0-100" vs "strain 0-21"), and the one-line explainer of what the number contributes
+ * to. The comparison this page added lives in the card now, so both readings survive in one place and
+ * there is no second Effort renderer to drift.
+ */
 @Composable
 private fun EffortHeadline(row: WorkoutRow, peers: List<WorkoutRow>) {
     val strain = row.strain ?: return
-    val effortScale = UnitPrefs.effortScale(LocalContext.current)
-    val shown = UnitFormatter.effortValue(strain, effortScale)
-    val baseline = sessionBaseline(peers.mapNotNull { it.strain })
-        ?.let { UnitFormatter.effortValue(it, effortScale) }
-    NoopCard(tint = Palette.effortColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
-            Overline(uiString(R.string.workout_detail_activity_effort))
-            MetricHeadline(
-                value = String.format(Locale.getDefault(), "%.1f", shown),
-                baseline = baseline?.let {
-                    uiString(R.string.workout_detail_sport_average, String.format(Locale.getDefault(), "%.1f", it))
-                },
-                direction = metricDirection(shown, baseline, epsilon = 0.05),
-                // A harder session than usual is not "bad"; Effort is neutral, so the arrow stays
-                // informational and the tint follows "more effort reads as the positive direction".
-                higherIsBetter = true,
-            )
-        }
-    }
+    SessionEffortCard(
+        strain = strain,
+        effortScale = UnitPrefs.effortScale(LocalContext.current),
+        // Peers' stored 0-100 strain; SessionEffortCard converts to the user's display scale itself, so
+        // the mean is taken on the stored axis and never on an already-rescaled number.
+        baselineStrain = sessionBaseline(peers.mapNotNull { it.strain }),
+    )
 }
 
 /** The heart-rate trace over the session, with its duration. */
