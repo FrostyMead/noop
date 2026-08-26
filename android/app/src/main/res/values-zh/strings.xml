@@ -2382,4 +2382,8 @@
     <string name="sleep_contributor_legend">昨夜对比你的常态</string>
     <string name="sleep_contributor_desc">%1$s：%2$s，常态 %3$s</string>
     <string name="sleep_contributor_desc_no_baseline">%1$s：%2$s</string>
+    <!-- Screen-reader labels that were previously hardcoded English. -->
+    <string name="a11y_quick_actions">快捷操作</string>
+    <string name="a11y_calorie_heatmap">活动卡路里热力图，最近 13 周</string>
+    <string name="a11y_model_capability_row">%1$s：WHOOP 4.0 %2$s，5.0/MG %3$s</string>
 </resources>

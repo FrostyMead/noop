@@ -2468,4 +2468,8 @@
     <string name="sleep_contributor_legend">Anoche frente a tu media habitual</string>
     <string name="sleep_contributor_desc">%1$s: %2$s, habitual %3$s</string>
     <string name="sleep_contributor_desc_no_baseline">%1$s: %2$s</string>
+    <!-- Screen-reader labels that were previously hardcoded English. -->
+    <string name="a11y_quick_actions">Acciones rápidas</string>
+    <string name="a11y_calorie_heatmap">Mapa de calor de calorías activas, últimas 13 semanas</string>
+    <string name="a11y_model_capability_row">%1$s: WHOOP 4.0 %2$s, 5.0/MG %3$s</string>
 </resources>

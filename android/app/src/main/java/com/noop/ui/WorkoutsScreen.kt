@@ -878,7 +878,7 @@ private fun CalorieHeatmapSection(recentDays: List<com.noop.data.DailyMetric>) {
                     Modifier
                         .fillMaxWidth()
                         .height(cell * 7 + gap * 6 + topInset)
-                        .semantics { contentDescription = "Active-calorie heatmap, last 13 weeks" },
+                        .semantics { contentDescription = uiString(R.string.a11y_calorie_heatmap) },
                 ) {
                     val gapPx = gap.toPx()
                     val cellPx = cell.toPx()

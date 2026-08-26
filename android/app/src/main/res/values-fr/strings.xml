@@ -2467,4 +2467,8 @@
     <string name="sleep_contributor_legend">La nuit dernière vs votre habitude</string>
     <string name="sleep_contributor_desc">%1$s : %2$s, habituel %3$s</string>
     <string name="sleep_contributor_desc_no_baseline">%1$s : %2$s</string>
+    <!-- Screen-reader labels that were previously hardcoded English. -->
+    <string name="a11y_quick_actions">Actions rapides</string>
+    <string name="a11y_calorie_heatmap">Carte thermique des calories actives, 13 dernières semaines</string>
+    <string name="a11y_model_capability_row">%1$s : WHOOP 4.0 %2$s, 5.0/MG %3$s</string>
 </resources>

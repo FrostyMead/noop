@@ -886,7 +886,7 @@ private fun GlassBottomBar(
                         indication = null,
                         onClick = onQuickActions,
                     )
-                    .semantics { contentDescription = "Quick actions" },
+                    .semantics { contentDescription = uiString(R.string.a11y_quick_actions) },
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(

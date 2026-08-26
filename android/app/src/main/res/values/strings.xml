@@ -2494,4 +2494,8 @@
     <string name="sleep_contributor_legend">Last night vs your typical</string>
     <string name="sleep_contributor_desc">%1$s: %2$s, typical %3$s</string>
     <string name="sleep_contributor_desc_no_baseline">%1$s: %2$s</string>
+    <!-- Screen-reader labels that were previously hardcoded English. -->
+    <string name="a11y_quick_actions">Quick actions</string>
+    <string name="a11y_calorie_heatmap">Active-calorie heatmap, last 13 weeks</string>
+    <string name="a11y_model_capability_row">%1$s: WHOOP 4.0 %2$s, 5.0/MG %3$s</string>
 </resources>
