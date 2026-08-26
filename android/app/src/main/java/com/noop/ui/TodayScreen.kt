@@ -1236,6 +1236,8 @@ fun TodayScreen(
                 onPickDay = { offset -> selectedDayOffset = offset },
                 onOpenSettings = onOpenSettings,
                 onOpenDevices = onOpenDevices,
+                // Feeds the day picker's Charge tinting; already collected for the dashboard.
+                days = days,
             )
         }
         }
@@ -2080,36 +2082,31 @@ private fun LiquidTodayHeader(
     onPickDay: (Int) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDevices: () -> Unit,
+    // The merged daily history, so the day picker can tint each date by its Charge. Defaulted empty so a
+    // caller without history still gets a working (uncoloured) calendar rather than no picker at all.
+    days: List<DailyMetric> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     var showPicker by remember { mutableStateOf(false) }
     if (showPicker) {
-        val context = LocalContext.current
-        DisposableEffect(selectedDay) {
-            val cal = Calendar.getInstance().apply {
-                set(selectedDay.year, selectedDay.monthValue - 1, selectedDay.dayOfMonth)
-            }
-            // Anchor the offset to the LOGICAL day (matches selectedDayOffset's anchor) so a picked date
-            // resolves to the same row the header is labelling, never drifting against LocalDate.now().
-            val anchor = logicalDayNow()
-            val dialog = DatePickerDialog(
-                context,
-                { _, year, month, day ->
-                    val picked = LocalDate.of(year, month + 1, day)
-                    val offset = ChronoUnit.DAYS.between(picked, anchor).toInt().coerceAtLeast(0)
-                    onPickDay(offset)
-                    showPicker = false
-                },
-                cal.get(Calendar.YEAR),
-                cal.get(Calendar.MONTH),
-                cal.get(Calendar.DAY_OF_MONTH),
-            ).apply {
-                datePicker.maxDate = System.currentTimeMillis()
-                setOnDismissListener { showPicker = false }
-            }
-            dialog.show()
-            onDispose { runCatching { dialog.dismiss() } }
-        }
+        // The stock Material DatePickerDialog could say a date existed but nothing about it, which on a
+        // recovery app is the one thing worth knowing when choosing a day to look at. RecoveryCalendarDialog
+        // tints each numeral by that day's Charge, so picking a day and reading the month are one gesture.
+        //
+        // The anchor stays the LOGICAL day (rolls at 04:00), exactly as the offset maths below does, so
+        // between midnight and 4am the calendar's "current day" agrees with the dashboard's instead of
+        // jumping to a calendar day that has no row yet.
+        val anchor = logicalDayNow()
+        RecoveryCalendarDialog(
+            days = days,
+            selected = selectedDay,
+            latest = anchor,
+            onPick = { picked ->
+                onPickDay(ChronoUnit.DAYS.between(picked, anchor).toInt().coerceAtLeast(0))
+                showPicker = false
+            },
+            onDismiss = { showPicker = false },
+        )
     }
 
     val selectedOffset = ChronoUnit.DAYS.between(selectedDay, logicalDayNow()).toInt().coerceAtLeast(0)

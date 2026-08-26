@@ -460,6 +460,9 @@ object Metrics {
     val stageSegMinWidth = 2.dp      // width floor so a brief fragment reads as a block, not a hairline
     val stageSegCorner = 1.5.dp      // solid segment rounding
     val stageInsightHeight = 36.dp   // fixed insight slot height — selection never reflows the card
+    /** One day cell in the Charge calendar — sized so the numeral, its ring and a 7-column month
+     *  grid all fit inside a dialog on a compact phone. */
+    val calendarCell = 34.dp
     // The Health Monitor's vital tile is taller than a Today tile: it carries an icon row, a display-sized
     // value with its unit, an optional trail and a status pill, where a Today tile carries a label and a
     // number. Its own token rather than growing [tileHeight], which would stretch every dashboard tile.

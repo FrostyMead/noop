@@ -2477,4 +2477,12 @@
     <string name="a11y_quick_actions">Szybkie akcje</string>
     <string name="a11y_calorie_heatmap">Mapa cieplna kalorii aktywnych, ostatnie 13 tygodni</string>
     <string name="a11y_model_capability_row">%1$s: WHOOP 4.0 %2$s, 5.0/MG %3$s</string>
+    <!-- Charge calendar (month-grid day picker). -->
+    <string name="calendar_previous_month">Poprzedni miesiąc</string>
+    <string name="calendar_next_month">Następny miesiąc</string>
+    <string name="calendar_legend_title">Naładowanie</string>
+    <string name="calendar_legend_low">Niskie</string>
+    <string name="calendar_legend_high">Wysokie</string>
+    <string name="calendar_day_charge_desc">%1$s, naładowanie %2$d procent</string>
+    <string name="calendar_day_no_charge_desc">%1$s, brak zapisanego naładowania</string>
 </resources>

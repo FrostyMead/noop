@@ -2386,4 +2386,12 @@
     <string name="a11y_quick_actions">快捷操作</string>
     <string name="a11y_calorie_heatmap">活动卡路里热力图，最近 13 周</string>
     <string name="a11y_model_capability_row">%1$s：WHOOP 4.0 %2$s，5.0/MG %3$s</string>
+    <!-- Charge calendar (month-grid day picker). -->
+    <string name="calendar_previous_month">上个月</string>
+    <string name="calendar_next_month">下个月</string>
+    <string name="calendar_legend_title">电量</string>
+    <string name="calendar_legend_low">低</string>
+    <string name="calendar_legend_high">高</string>
+    <string name="calendar_day_charge_desc">%1$s，电量 %2$d%%</string>
+    <string name="calendar_day_no_charge_desc">%1$s，无电量记录</string>
 </resources>
