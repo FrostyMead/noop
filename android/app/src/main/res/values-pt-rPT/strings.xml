@@ -2473,4 +2473,7 @@
     <string name="calendar_legend_high">Alta</string>
     <string name="calendar_day_charge_desc">%1$s, carga %2$d por cento</string>
     <string name="calendar_day_no_charge_desc">%1$s, sem carga registada</string>
+    <!-- Today activity list: the night as its own row. -->
+    <string name="today_activity_sleep">Sono</string>
+    <string name="today_action_open_sleep">Abrir detalhes do sono</string>
 </resources>

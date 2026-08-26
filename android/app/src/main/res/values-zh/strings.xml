@@ -2394,4 +2394,7 @@
     <string name="calendar_legend_high">高</string>
     <string name="calendar_day_charge_desc">%1$s，电量 %2$d%%</string>
     <string name="calendar_day_no_charge_desc">%1$s，无电量记录</string>
+    <!-- Today activity list: the night as its own row. -->
+    <string name="today_activity_sleep">睡眠</string>
+    <string name="today_action_open_sleep">打开睡眠详情</string>
 </resources>

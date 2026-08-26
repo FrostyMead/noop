@@ -1538,8 +1538,13 @@ fun TodayScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             TodayWorkoutsSection(
+                                viewModel = viewModel,
                                 workouts = footer.recentWorkouts,
                                 selectedDay = selectedDay,
+                                // The day row's own sleep total, so the row cannot disagree with the Rest
+                                // score computed from the same figure.
+                                sleepMinutes = displayMetric?.totalSleepMin,
+                                onOpenSleep = onOpenSleep,
                                 // The same relative wording the header uses, so the card says WHICH day it
                                 // is listing rather than a fixed "14 days".
                                 dayLabel = relativeDayTitle(selectedDayOffset, selectedDayKey, selectedDay),
@@ -6119,9 +6124,12 @@ private fun WorkoutGlyph(icon: ImageVector, modifier: Modifier = Modifier) {
 
 @Composable
 private fun TodayWorkoutsSection(
+    viewModel: AppViewModel,
     workouts: List<WorkoutRow>,
     selectedDay: LocalDate,
     dayLabel: String,
+    sleepMinutes: Double?,
+    onOpenSleep: () -> Unit = {},
     onOpenWorkout: (WorkoutRow) -> Unit = {},
 ) {
     // Single column, newest first: the 2x2 grid truncated durations on narrow phones and read as
@@ -6133,12 +6141,60 @@ private fun TodayWorkoutsSection(
     // today's workouts sitting under Tuesday's scores. Everything else on the dashboard already followed
     // the navigator; this was the panel that did not.
     val feed = remember(workouts, selectedDay) { workoutsOnDay(workouts, selectedDay) }
-    if (feed.isEmpty()) return
+
+    // The night belongs in the day's activity list: sleep IS the day's largest activity, and without it a
+    // rest day showed an empty section — the one place the list is most worth having, since there is
+    // nothing else to see. The DURATION comes from the day row's own totalSleepMin (the same figure the
+    // scores were computed from, so it cannot disagree with them); the bed→wake TIMES come from
+    // `mainSleepSpan`, the shared bridged-night resolver the Sleep tab hero and AnalyticsEngine's daily
+    // total both use. Re-deriving attribution here would risk Today and Sleep naming different nights for
+    // the same day; calling the same resolver cannot.
+    //
+    // Loaded in a scoped LaunchedEffect rather than hoisted into the Today body, matching the HR card:
+    // the body is recomposition-sensitive and this read is only needed by this section.
+    var sleepSpan by remember(selectedDay) { mutableStateOf<Pair<Long, Long>?>(null) }
+    LaunchedEffect(selectedDay, sleepMinutes) {
+        sleepSpan = runCatching {
+            val zone = ZoneId.systemDefault()
+            val start = selectedDay.atStartOfDay(zone).toEpochSecond()
+            val end = selectedDay.plusDays(1).atStartOfDay(zone).toEpochSecond() - 1
+            // The same 18h lower reach the HR card uses, so an onset well before midnight is still caught,
+            // and the same strap union so a second strap's night is not missed (#1304/#512).
+            val overlapping = viewModel.repo
+                .sleepSessionsUnion(viewModel.activeStrapId, start - 18 * 3600L, end)
+                .filter { it.startTs <= end && it.endTs >= start }
+            mainSleepSpan(overlapping, viewModel.repo.habitualMidsleepSec(viewModel.activeStrapId))
+        }.getOrNull()
+    }
+
+    val hasSleep = (sleepMinutes ?: 0.0) > 0.0
+    if (feed.isEmpty() && !hasSleep) return
 
     // "Latest Workouts", not "Last": "Last" read as "final". Mirrored on iOS (TodayView). Lives in
     // strings.xml (values + values-de) so the header is localizable like the nav labels.
     SectionHeader(stringResource(R.string.today_latest_workouts), overline = uiString(R.string.today_workouts_activity), trailing = dayLabel)
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
+        if (hasSleep) {
+            val minutes = sleepMinutes ?: 0.0
+            val interaction = remember(selectedDay) { MutableInteractionSource() }
+            StatTile(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .liquidPress(interaction)
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = null,
+                        onClickLabel = uiString(R.string.today_action_open_sleep),
+                        onClick = onOpenSleep,
+                    ),
+                label = uiString(R.string.today_activity_sleep),
+                value = localizedMetricValue(workoutDurationFromMinutes(minutes)),
+                // Bed→wake when the span resolved; otherwise just the day, because a duration with no
+                // window is still true while invented times would not be.
+                caption = sleepSpan?.let { (s, e) -> sleepWindowCaption(s, e) } ?: dayLabel,
+                accent = Palette.restColor,
+            )
+        }
         feed.forEach { workout ->
             // #whoop-detail: these rows were inert — the dashboard listed a session but offered no way
             // into it, so the only route to a workout's detail was the Workouts tab's own list. Tapping
@@ -6854,6 +6910,20 @@ private fun relativeDayTitle(offset: Int, selectedDayKey: String, fallback: Loca
             keyDate.format(DateTimeFormatter.ofPattern("EEEE", Locale.getDefault()))
         }
     }
+
+/** The same "Xh Ym" shape [workoutDuration] produces, from a minute total. */
+private fun workoutDurationFromMinutes(minutes: Double): String {
+    if (minutes <= 0.0) return NO_DATA
+    val total = minutes.roundToInt()
+    return if (total >= 60) "${total / 60}h ${total % 60}m" else "${total}m"
+}
+
+/** "HH:mm - HH:mm" for a bed→wake span, matching the workout rows' time-range caption. */
+private fun sleepWindowCaption(startTs: Long, endTs: Long): String {
+    val start = workoutTimeFmt.format(Instant.ofEpochSecond(startTs))
+    val end = workoutTimeFmt.format(Instant.ofEpochSecond(endTs))
+    return "$start - $end"
+}
 
 /** "d MMM · HH:mm–HH:mm" (#157); start-only when the end isn't after the start (zero/unknown span). */
 private fun workoutCaption(row: WorkoutRow): String {

@@ -2506,4 +2506,7 @@
     <string name="calendar_legend_high">High</string>
     <string name="calendar_day_charge_desc">%1$s, Charge %2$d percent</string>
     <string name="calendar_day_no_charge_desc">%1$s, no Charge recorded</string>
+    <!-- Today activity list: the night as its own row. -->
+    <string name="today_activity_sleep">Sleep</string>
+    <string name="today_action_open_sleep">Open sleep detail</string>
 </resources>

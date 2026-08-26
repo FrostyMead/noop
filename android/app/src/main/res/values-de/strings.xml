@@ -2494,4 +2494,7 @@
     <string name="calendar_legend_high">Hoch</string>
     <string name="calendar_day_charge_desc">%1$s, Belastbarkeit %2$d Prozent</string>
     <string name="calendar_day_no_charge_desc">%1$s, keine Belastbarkeit erfasst</string>
+    <!-- Today activity list: the night as its own row. -->
+    <string name="today_activity_sleep">Schlaf</string>
+    <string name="today_action_open_sleep">Schlafdetails öffnen</string>
 </resources>
