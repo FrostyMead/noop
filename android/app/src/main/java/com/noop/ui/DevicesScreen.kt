@@ -131,7 +131,7 @@ fun DevicesScreen(
     val deviceConfigProbeResult by viewModel.deviceConfigProbe.collectAsStateWithLifecycle()
 
     // Liquid sky backdrop gate — the SAME "Day-cycle background" preference the liquid Today honours (#698,
-    // default ON). Off falls back to the flat dark canvas, so the setting governs every liquid screen alike.
+    // default OFF). Off falls back to the flat dark canvas, so the setting governs every liquid screen alike.
     val context = LocalContext.current
     val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
     val skyBehindCards = remember { NoopPrefs.skyBehindCards(context) }

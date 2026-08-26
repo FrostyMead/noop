@@ -262,6 +262,20 @@ fun Overline(text: String, modifier: Modifier = Modifier, color: Color = Palette
 
 // MARK: - Section header
 
+/**
+ * A section's header: its name, an optional qualifier, and an optional trailing note.
+ *
+ * The name leads, in bold uppercase on ONE line with the trailing note beside it, and the qualifier —
+ * when there is one — sits quietly beneath. Previously the order was inverted: an uppercase [overline]
+ * sat ABOVE a 22sp title, so every section spent three type sizes and two lines introducing itself, and
+ * the first thing the eye met was the least specific word on the card ("Metrics", "Weekly", "Recovery")
+ * rather than the section's actual name. A screen with eight sections paid that eight times, which is
+ * most of why the app read as busier than it is.
+ *
+ * Nothing is dropped — the qualifier still renders, demoted rather than deleted, because on some cards
+ * it carries real context ("From your nightly readings") even where on others it is only a category word.
+ * Deciding which is which across 61 call sites is a judgement per site; changing the hierarchy is not.
+ */
 @Composable
 fun SectionHeader(
     title: String,
@@ -271,19 +285,26 @@ fun SectionHeader(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space2),
     ) {
-        if (overline != null || trailing != null) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-            ) {
-                if (overline != null) Overline(overline, modifier = Modifier.weight(1f))
-                if (trailing != null) {
-                    Text(trailing, style = NoopType.footnote, color = Palette.textSecondary)
-                }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = title.uppercase(),
+                style = NoopType.sectionTitle,
+                color = Palette.textPrimary,
+                modifier = Modifier.weight(1f),
+            )
+            if (trailing != null) {
+                Spacer(Modifier.width(Metrics.space8))
+                Text(trailing, style = NoopType.footnote, color = Palette.textTertiary)
             }
         }
-        Text(title, style = NoopType.title2, color = Palette.textPrimary)
+        if (overline != null) {
+            Text(overline, style = NoopType.footnote, color = Palette.textTertiary)
+        }
     }
 }
 

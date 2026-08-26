@@ -706,7 +706,7 @@ fun SettingsScreen(
     // HRV window (#141) — whole-night vs deep-sleep (WHOOP-style). NOT display-only: it changes the computed
     // avgHrv, so a switch clears the analyze watermark to force a re-score + re-baseline on the next pass.
     var hrvWindow by remember { mutableStateOf(UnitPrefs.hrvWindow(context)) }
-    // Day-cycle background (#698) — the time-of-day scene behind Today. Default ON. SharedPreferences
+    // Day-cycle background (#698) — the time-of-day scene behind Today. Default OFF. SharedPreferences
     // isn't reactive, so the Switch mirrors into local state; TodayScreen reads the same pref on entry.
     var showDayCycleBackground by remember { mutableStateOf(NoopPrefs.showDayCycleBackground(context)) }
     // "Sky behind cards" (opt-in, default OFF) — extend the day-cycle sky behind the whole Today scroll so

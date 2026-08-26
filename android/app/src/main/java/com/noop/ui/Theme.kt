@@ -522,6 +522,18 @@ object NoopType {
         letterSpacing = 1.4.sp,
     )
 
+    /**
+     * A section's own name — bold, uppercase, lightly tracked.
+     *
+     * Bigger than [overline] (which labels a value inside a card) because this labels the section
+     * itself, and smaller than [title2] because a screen of eight sections should not carry eight
+     * 22sp headlines competing with the numbers they introduce.
+     */
+    val sectionTitle = TextStyle(
+        fontFamily = sans, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+        letterSpacing = 1.2.sp,
+    )
+
     /** Mono 13 — raw / log views. */
     val mono = TextStyle(fontFamily = monoFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp)
 

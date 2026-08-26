@@ -629,7 +629,7 @@ fun TodayScreen(
     // Both are loaded off the main thread and re-read as the day's data grows; SharedPreferences isn't
     // reactive, so the toggle is read once into local state.
     val hydrationEnabled = remember { NoopPrefs.hydrationTracking(context) }
-    // Day-cycle scene backdrop (#698). Default ON. When off, Today drops the SceneScreenBackground and
+    // Day-cycle scene backdrop (#698). Default OFF. When off, Today drops the SceneScreenBackground and
     // the scaffold paints the plain dark surface canvas instead. SharedPreferences isn't reactive, so
     // this is read once into local state (mirrors iOS @AppStorage in TodayView).
     val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
@@ -1192,7 +1192,7 @@ fun TodayScreen(
         // the classic day-cycle SceneScreenBackground with the liquid day-of-sky (LiquidSkyStatic — no
         // per-frame cost on this scroll-heavy screen). The other liquid screens drop in the SAME
         // LiquidScreenSky() slot verbatim.
-        // #698, gated on the "Day-cycle background" setting (default ON). Off passes null, so the scaffold
+        // #698, gated on the "Day-cycle background" setting (default OFF). Off passes null, so the scaffold
         // paints the plain dark surface canvas instead, mirroring iOS's `showDayCycleBackground ? ... : nil`.
         topBackground = screenBackdropSlot(showDayCycleBackground, skyBehindCards),
         // Sky-behind-cards fills the viewport so the transparent cards reveal the sky the whole way down.

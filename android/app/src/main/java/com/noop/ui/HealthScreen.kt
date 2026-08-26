@@ -160,7 +160,7 @@ fun HealthScreen(
     // the theme canvas behind this screen's top region, full-bleed up behind the status bar via the
     // scaffold's topBackground plumbing, replacing the classic scene backdrop. Static (LiquidSkyStatic,
     // inside the helper) — never an animated sky behind a scrolling list. Gated on the shared "Day-cycle
-    // background" pref (default ON) exactly like Today; OFF passes null so the scaffold paints the flat
+    // background" pref (default OFF) exactly like Today; OFF passes null so the scaffold paints the flat
     // surface canvas instead.
     val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
     val skyBehindCards = remember { NoopPrefs.skyBehindCards(context) }

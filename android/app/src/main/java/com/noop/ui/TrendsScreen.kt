@@ -111,7 +111,7 @@ fun TrendsScreen(vm: AppViewModel) {
     // Effort display scale (#268) , routes the Effort small-multiple's numbers + unit. Display-only.
     val effortScale = UnitPrefs.effortScale(LocalContext.current)
 
-    // Day-cycle sky backdrop (#698). Default ON. When off, Trends drops the liquid sky and the scaffold
+    // Day-cycle sky backdrop (#698). Default OFF. When off, Trends drops the liquid sky and the scaffold
     // paints the plain dark surface canvas instead. SharedPreferences isn't reactive, so this is read once
     // into local state (mirrors Today's showDayCycleBackground gate).
     val trendsCtx = LocalContext.current

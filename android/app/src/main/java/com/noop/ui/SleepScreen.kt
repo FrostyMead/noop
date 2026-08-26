@@ -251,7 +251,7 @@ fun SleepScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // Day-cycle sky backdrop (#698). Default ON. When off, the screen drops the liquid sky and the
+    // Day-cycle sky backdrop (#698). Default OFF. When off, the screen drops the liquid sky and the
     // scaffold paints the plain dark surface canvas instead — the SAME gate the liquid Today honours.
     // SharedPreferences isn't reactive, so it's read once into local state (mirrors iOS @AppStorage).
     val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
