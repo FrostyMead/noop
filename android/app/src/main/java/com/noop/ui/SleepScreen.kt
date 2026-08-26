@@ -568,6 +568,17 @@ fun SleepScreen(
                     overline = nightLabel,
                 )
             }
+            // The contributor read, directly under the score it explains: the four component metrics
+            // against each one's own typical value. Pinned here rather than made arrangeable — it belongs
+            // to the hero (it is the "why" of that number), and a user who moved it elsewhere would be
+            // reading contributors for a score no longer on screen.
+            tilesModel?.let { m ->
+                item {
+                    Column(Modifier.padding(top = Metrics.selectorTopUp)) {
+                        SleepContributorsCard(m, onMetricClick = { detailMetricKey = it })
+                    }
+                }
+            }
             // #sleep-layout: a compact "Arrange" affordance (the same Tune entry Today uses) opens the
             // reorder / show-hide sheet. Pinned just above the arrangeable cards.
             item {

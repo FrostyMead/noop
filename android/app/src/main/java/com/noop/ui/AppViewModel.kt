@@ -1848,6 +1848,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return if (minutes.any { it > 0.0 }) minutes else null
     }
 
+    /** The user's live HR zone set — the bpm boundaries and the HRmax they were derived from.
+     *
+     *  [workoutZoneMinutes] returns only how LONG each zone lasted, which is all a stacked bar needs. A
+     *  detail screen that names each zone ("ZONE 4 · 160-173 BPM") needs the boundaries themselves, and
+     *  re-deriving them at the call site would risk labelling a bar with different edges than the ones
+     *  that binned it. Same [ProfileStore] value the binning uses, so the two can never disagree. */
+    val hrZoneSet: com.noop.analytics.HrZoneSet get() = profileStore.hrZoneSet
+
+    /** Full time-in-zone for a workout window, INCLUDING the below-Zone-1 time.
+     *
+     *  [workoutZoneMinutes] drops [com.noop.analytics.TimeInZone.belowZone1], because a five-segment bar
+     *  has nowhere to put it. That discards real time: an easy session can spend most of its minutes under
+     *  50% HRmax, and a five-zone split then silently rescales those minutes away, making the session look
+     *  more intense than it was. A per-zone row list has a natural home for it (a "Zone 0" row), so this
+     *  returns the whole structure and lets the caller decide. null when the window carries no HR. */
+    suspend fun workoutTimeInZone(
+        from: Long,
+        to: Long,
+        source: String = "",
+        rowDeviceId: String = deviceId,
+    ): com.noop.analytics.TimeInZone? {
+        if (to <= from) return null
+        val ids = WhoopRepository.workoutHrDeviceIds(source, rowDeviceId, deviceId)
+        val samples = runCatching { repository.hrSamplesFor(ids, from, to) }.getOrDefault(emptyList())
+        if (samples.isEmpty()) return null
+        val tiz = com.noop.analytics.HrZones.timeInZone(samples, profileStore.hrZoneSet)
+        return if (tiz.total > 0.0) tiz else null
+    }
+
     /** HRR for one workout (#516), derived from a narrow workout-end + post-workout HR read. The pure
      *  engine owns the intensity and coverage gates, so a disconnect after exercise returns null rather
      *  than an interpolated value. Mirrors macOS Repository.workoutHeartRateRecovery. */

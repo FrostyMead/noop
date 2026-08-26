@@ -295,6 +295,9 @@ fun TodayScreen(
     // The #627 journal-reminder card links straight to the journal (Insights). Defaulted to a no-op so
     // the call site stays compiling; AppRoot binds it to nav.navigateTopLevel(Insights), same as Sleep.
     onOpenJournal: () -> Unit = {},
+    // #whoop-detail: a tapped workout row pushes that session's full detail page. Defaulted to a no-op
+    // so the call site stays compiling; AppRoot binds it to the workout_detail route.
+    onOpenWorkout: (WorkoutRow) -> Unit = {},
 ) {
     val today by viewModel.today.collectAsStateWithLifecycle()
     val alert by viewModel.healthAlert.collectAsStateWithLifecycle()
@@ -1539,7 +1542,7 @@ fun TodayScreen(
                             modifier = Modifier.fillMaxWidth().staggeredAppear(stagger),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            TodayWorkoutsSection(footer.recentWorkouts)
+                            TodayWorkoutsSection(footer.recentWorkouts, onOpenWorkout = onOpenWorkout)
                         }
                         // HEART RATE, the live HR thread / trend card. #991: header + card in a Column.
                         TodaySection.HEART_RATE -> Column(
@@ -2723,15 +2726,24 @@ private fun HeroScoreVessel(
             modifier = Modifier.size(diameter),
         )
         if (showsValue) {
-            // Count-up number over the vessel — white, tabular, a soft shadow for legibility, hit-transparent
-            // so the tap reaches the vessel (splash). Size ≈ diameter × 0.27 (iOS 96→26 ratio), capped.
+            // Count-up number over the vessel — tabular, hit-transparent so the tap reaches the vessel
+            // (splash). Size ≈ diameter × 0.27 (iOS 96→26 ratio), capped.
+            //
+            // The ink is `tipCore`, the token that already means "the bright core that has to read on top
+            // of a coloured bead": white on dark, deep ink on the warm-paper light theme. It was a hard
+            // `Color.White`, which was fine only while the vessel well was a hardcoded near-black. Now that
+            // the well is themed (Palette.vesselWell), a white number on a pale glass bowl would disappear.
+            // The drop shadow follows suit — a black bloom under dark ink on paper reads as smudge, so the
+            // light theme lifts the glyph with a white halo instead.
             val numberSp = (diameter.value * 0.27f).coerceIn(20f, 30f)
+            val ink = Palette.tipCore
+            val halo = if (Palette.isLight) Color.White.copy(alpha = 0.65f) else Color.Black.copy(alpha = 0.5f)
             CountUpText(
                 value = value,
                 format = format,
                 style = NoopType.number(numberSp, weight = FontWeight.Bold)
-                    .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 6f)),
-                color = Color.White,
+                    .copy(shadow = Shadow(color = halo, offset = Offset(0f, 1f), blurRadius = 6f)),
+                color = ink,
                 modifier = Modifier.clearAndSetSemantics {},
             )
         }
@@ -3561,9 +3573,11 @@ private fun DashboardCardRow(
     // A real number renders white; a placeholder (No Data, or the Stress calibrating state) renders dimmed.
     val hasValue = value != NO_DATA && value != STRESS_CALIBRATING
     val displayValue = localizedMetricValue(value)
-    // iOS `cardLink` corner is 20 (a touch rounder than the app-wide 18dp card), with the SAME neutral
-    // surfaceRaised fill + plain hairline the frosted neutral surface already draws.
-    val rowShape = RoundedCornerShape(20.dp)
+    // Same neutral surfaceRaised fill + plain hairline the frosted neutral surface already draws, at the
+    // shared card radius. This row used to sit at 20dp against NoopCard's 24dp while wearing the identical
+    // surface, so the dashboard stacked two container radii that differed by too little to read as
+    // intentional and too much to line up.
+    val rowShape = RoundedCornerShape(Metrics.cardRadius)
     // liquidPress: the tappable card settles inward on press (the iOS LiquidPressStyle feel). The SAME
     // interactionSource feeds the clickable and the press modifier, so it responds to the actual touch.
     // It is applied OUTSIDE the frosted surface so the whole card (surface + content) scales/dims as one.
@@ -3911,7 +3925,7 @@ private fun DashboardCardsEditorDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             color = Palette.surfaceOverlay,
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(Metrics.cornerMd),
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),
@@ -3977,7 +3991,7 @@ private fun HostedCardsEditorDialog(
     }
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(color = Palette.surfaceOverlay, shape = RoundedCornerShape(16.dp)) {
+        Surface(color = Palette.surfaceOverlay, shape = RoundedCornerShape(Metrics.cornerMd)) {
             Column(
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -4231,7 +4245,7 @@ private fun TodayLayoutEditorDialog(
     }
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(color = Palette.surfaceOverlay, shape = RoundedCornerShape(16.dp)) {
+        Surface(color = Palette.surfaceOverlay, shape = RoundedCornerShape(Metrics.cornerMd)) {
             Column(
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -4344,7 +4358,7 @@ internal fun ChargeBreakdownSheet(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(Metrics.cornerSm))
                         .clickable(
                             onClickLabel = uiString(R.string.today_action_how_charge),
                             onClick = onHowCalculated,
@@ -5168,11 +5182,11 @@ private fun LiquidKeyTile(
     } else {
         modifier
     }
-    val tileShape = RoundedCornerShape(20.dp)
+    val tileShape = RoundedCornerShape(Metrics.cardRadius)
     Column(
         modifier = base
             .clip(tileShape)
-            .frostedCardSurface(cornerRadius = 20.dp)
+            .frostedCardSurface(cornerRadius = Metrics.cardRadius)
             .padding(horizontal = 14.dp, vertical = 13.dp)
             .semantics { contentDescription = uiString(R.string.l10n_today_screen_data_label_data_value_data_unit_27f6fd6b, data.label, displayValue, data.unit).trim() },
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -6048,7 +6062,7 @@ private fun ChartMarkerPill(
 ) {
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(Metrics.cornerXs))
             .background(Palette.surfaceOverlay.copy(alpha = 0.92f))
             .padding(horizontal = 6.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -6067,7 +6081,7 @@ private fun WorkoutGlyph(icon: ImageVector, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(22.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(Metrics.cornerXs))
             .background(Palette.strain033),
         contentAlignment = Alignment.Center,
     ) {
@@ -6083,7 +6097,7 @@ private fun WorkoutGlyph(icon: ImageVector, modifier: Modifier = Modifier) {
 // MARK: - Today footer sections
 
 @Composable
-private fun TodayWorkoutsSection(workouts: List<WorkoutRow>) {
+private fun TodayWorkoutsSection(workouts: List<WorkoutRow>, onOpenWorkout: (WorkoutRow) -> Unit = {}) {
     // Single column, newest first: the 2x2 grid truncated durations on narrow phones and read as
     // unrelated stat tiles rather than a chronological feed. Full-width tiles have room for the
     // kcal chip, so the #332 compactDelta workaround is no longer needed here.
@@ -6095,8 +6109,20 @@ private fun TodayWorkoutsSection(workouts: List<WorkoutRow>) {
     SectionHeader(stringResource(R.string.today_latest_workouts), overline = uiString(R.string.today_workouts_activity), trailing = uiString(R.string.today_workouts_14_days))
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         feed.forEach { workout ->
+            // #whoop-detail: these rows were inert — the dashboard listed a session but offered no way
+            // into it, so the only route to a workout's detail was the Workouts tab's own list. Tapping
+            // the activity you just did is the obvious gesture; now it pushes that session's page.
+            val interaction = remember(workout.startTs) { MutableInteractionSource() }
             StatTile(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .liquidPress(interaction)
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = null,
+                        onClickLabel = uiString(R.string.today_action_open_workout),
+                        onClick = { onOpenWorkout(workout) },
+                    ),
                 label = WorkoutEditing.displaySport(workout.sport),
                 value = localizedMetricValue(workoutDuration(workout)),
                 caption = workoutCaption(workout),
@@ -6603,7 +6629,7 @@ private fun IllnessBanner(message: String) {
         Box(
             modifier = Modifier
                 .size(34.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(Metrics.cornerSm))
                 .background(Palette.statusWarning.copy(alpha = StrandAlpha.warningFill)),
             contentAlignment = Alignment.Center,
         ) {
@@ -6831,7 +6857,7 @@ private fun KeyMetricsEditorDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             color = Palette.surfaceOverlay,
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(Metrics.cornerMd),
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),

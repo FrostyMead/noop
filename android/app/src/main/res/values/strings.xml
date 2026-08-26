@@ -2461,4 +2461,37 @@
     <string name="l10n_settings_screen_effort_exponential_scale_desc">Scores Effort on an exponential intensity curve (Banister TRIMP) instead of the default heart-rate zones (Edwards). The default earns nothing below half of your heart-rate reserve, so an hour of lifting — where hard sets average out against the rests — can score close to zero. The exponential curve has no floor and weights short, hard efforts far more heavily. Re-scores your history, and both scales reach the same maximum. Off by default.</string>
     <string name="l10n_settings_screen_allow_3ad0e369">Allow</string>
     <string name="l10n_settings_screen_manage_bf58d17e">Manage</string>
+    <string name="today_action_open_workout">Open workout details</string>
+    <!-- Workout detail page (full-screen session read). -->
+    <string name="workout_detail_avg_hr_label">Avg HR</string>
+    <string name="workout_detail_missing_title">Session not found</string>
+    <string name="workout_detail_missing_body">This workout is no longer in your history. It may have been deleted, or merged into another session.</string>
+    <string name="workout_detail_back">Back</string>
+    <string name="workout_detail_activity_effort">Activity Effort</string>
+    <string name="workout_detail_sport_average">%1$s average for this sport</string>
+    <string name="workout_detail_heart_rate">Heart rate</string>
+    <string name="workout_detail_duration">Duration %1$s</string>
+    <string name="workout_detail_bpm">%1$d bpm</string>
+    <string name="workout_detail_bpm_unit">bpm</string>
+    <string name="workout_detail_zone_span">%1$d–%2$d BPM</string>
+    <string name="workout_detail_zone_span_open">%1$d+ BPM</string>
+    <string name="workout_detail_zone_span_below">Under %1$d BPM</string>
+    <string name="workout_detail_percent">%1$d%%</string>
+    <string name="workout_detail_zones_imported">From WHOOP import</string>
+    <string name="workout_detail_zones_derived">From strap HR</string>
+    <string name="workout_detail_zone_desc">Zone %1$d, %2$d percent, %3$s</string>
+    <string name="workout_detail_key_statistics">Key statistics</string>
+    <string name="workout_detail_vs_sport_average">vs. 30-day average</string>
+    <string name="workout_detail_calories">Calories</string>
+    <string name="workout_detail_cals">cals</string>
+    <string name="workout_detail_cals_delta">%1$d cals</string>
+    <string name="workout_detail_notes">Notes</string>
+    <!-- Sleep performance contributor rows. -->
+    <string name="sleep_contributor_hours_vs_needed">Hours vs needed</string>
+    <string name="sleep_contributor_consistency">Sleep consistency</string>
+    <string name="sleep_contributor_efficiency">Sleep efficiency</string>
+    <string name="sleep_contributor_restorative">Restorative sleep</string>
+    <string name="sleep_contributor_legend">Last night vs your typical</string>
+    <string name="sleep_contributor_desc">%1$s: %2$s, typical %3$s</string>
+    <string name="sleep_contributor_desc_no_baseline">%1$s: %2$s</string>
 </resources>

@@ -1,6 +1,12 @@
 package com.noop.ui
 
 import com.noop.R
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Nightlight
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -63,6 +69,67 @@ import kotlin.math.roundToInt
 @Composable
 internal fun NightDetailHostCard(m: SleepModel, onMetricClick: (String) -> Unit = {}) {
     MetricGrid(m, onMetricClick = onMetricClick)
+}
+
+/**
+ * The four scores that make up sleep performance, read as one list against each metric's own typical
+ * value — the contributor panel that sits directly under the Rest hero.
+ *
+ * This is the same data the Night-detail grid already carries, in the OTHER useful shape. A grid of tiles
+ * answers "how is each metric doing"; a stacked list under the score answers "which of these is why the
+ * score is what it is", which is the question someone has just after reading the number. Both are worth
+ * having, so this adds a reading rather than replacing the grid.
+ *
+ * [Metric.typical] is a trailing mean, so a metric with no history yet renders its value with no arrow and
+ * no baseline line rather than being compared against nothing.
+ */
+@Composable
+internal fun SleepContributorsCard(m: SleepModel, onMetricClick: (String) -> Unit = {}) {
+    // Each row: glyph, label, the value, its typical, and which direction is the good one. Efficiency and
+    // hours-vs-needed read "higher is better"; so do performance and consistency, so all four share it —
+    // but the flag is stated per row rather than assumed, because a future contributor (sleep stress,
+    // wake events) will not.
+    data class Row(
+        val key: String,
+        val icon: ImageVector,
+        val label: String,
+        val metric: Metric,
+        val higherIsBetter: Boolean = true,
+    )
+
+    val rows = listOf(
+        Row("hours_vs_needed", Icons.Filled.Bedtime, uiString(R.string.sleep_contributor_hours_vs_needed), m.hoursVsNeeded),
+        Row("consistency", Icons.Filled.Schedule, uiString(R.string.sleep_contributor_consistency), m.consistency),
+        Row("efficiency", Icons.Filled.Speed, uiString(R.string.sleep_contributor_efficiency), m.efficiency),
+        Row("restorative", Icons.Filled.Nightlight, uiString(R.string.sleep_contributor_restorative), m.restorative),
+    ).filter { it.metric.latest != null }
+
+    if (rows.isEmpty()) return
+
+    NoopCard {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
+            rows.forEachIndexed { index, row ->
+                val value = row.metric.latest ?: return@forEachIndexed
+                val typical = row.metric.typical
+                MetricComparisonRow(
+                    icon = row.icon,
+                    label = row.label,
+                    value = pctValue(value),
+                    baseline = typical?.let { pctValue(it) },
+                    // A whole percentage point is the smallest difference worth an arrow; below that the
+                    // two values round to the same displayed number and an arrow contradicts the text.
+                    direction = metricDirection(value, typical, epsilon = 0.5),
+                    higherIsBetter = row.higherIsBetter,
+                    modifier = Modifier.clickable { onMetricClick(row.key) },
+                    contentDescription = typical?.let {
+                        uiString(R.string.sleep_contributor_desc, row.label, pctValue(value), pctValue(it))
+                    } ?: uiString(R.string.sleep_contributor_desc_no_baseline, row.label, pctValue(value)),
+                )
+                if (index != rows.lastIndex) CardDivider()
+            }
+            ComparisonLegend(uiString(R.string.sleep_contributor_legend))
+        }
+    }
 }
 
 @Composable
@@ -1028,7 +1095,7 @@ internal fun SleepConsistencyCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
-                    .clip(RoundedCornerShape(Metrics.cornerSm))
+                    .clip(RoundedCornerShape(Metrics.cornerMd))
                     .semantics { contentDescription = uiString(R.string.l10n_sleep_screen_sleep_consistency_nightly_bed_and_wake_14526f89) }
                     .drawBehind {
                         val yAxisW = 52f
@@ -1041,7 +1108,7 @@ internal fun SleepConsistencyCard(
                         // got cropped (#443). Fix: a smaller label that fits the 52px gutter, and a
                         // baseline that's CENTRED on each gridline then clamped so the full glyph
                         // (ascent..descent) clears the rounded corners (cornerSm, in px) top and bottom.
-                        val cornerPx = Metrics.cornerSm.toPx()
+                        val cornerPx = Metrics.cornerMd.toPx()
                         val paint = android.graphics.Paint().apply {
                             color = labelArgb
                             textSize = 20f

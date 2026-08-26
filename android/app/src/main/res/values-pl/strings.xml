@@ -2440,4 +2440,37 @@
     <string name="l10n_settings_screen_effort_exponential_scale_desc">Ocenia Wysiłek według wykładniczej krzywej intensywności (TRIMP Banistera) zamiast domyślnych stref tętna (Edwards). Ustawienie domyślne nie liczy niczego poniżej połowy rezerwy tętna, więc godzina treningu siłowego — gdzie ciężkie serie uśredniają się z przerwami — może dać wynik bliski zeru. Krzywa wykładnicza nie ma progu i znacznie mocniej waży krótkie, intensywne wysiłki. Przelicza historię, a obie skale osiągają to samo maksimum. Domyślnie wyłączone.</string>
     <string name="l10n_settings_screen_allow_3ad0e369">Zezwól</string>
     <string name="l10n_settings_screen_manage_bf58d17e">Zarządzaj</string>
+    <string name="today_action_open_workout">Otwórz szczegóły treningu</string>
+    <!-- Workout detail page (full-screen session read). -->
+    <string name="workout_detail_avg_hr_label">Śr. tętno</string>
+    <string name="workout_detail_missing_title">Nie znaleziono sesji</string>
+    <string name="workout_detail_missing_body">Tego treningu nie ma już w historii. Mógł zostać usunięty lub połączony z inną sesją.</string>
+    <string name="workout_detail_back">Wstecz</string>
+    <string name="workout_detail_activity_effort">Wysiłek aktywności</string>
+    <string name="workout_detail_sport_average">średnia %1$s dla tej dyscypliny</string>
+    <string name="workout_detail_heart_rate">Tętno</string>
+    <string name="workout_detail_duration">Czas trwania %1$s</string>
+    <string name="workout_detail_bpm">%1$d bpm</string>
+    <string name="workout_detail_bpm_unit">bpm</string>
+    <string name="workout_detail_zone_span">%1$d–%2$d BPM</string>
+    <string name="workout_detail_zone_span_open">%1$d+ BPM</string>
+    <string name="workout_detail_zone_span_below">Poniżej %1$d BPM</string>
+    <string name="workout_detail_percent">%1$d%%</string>
+    <string name="workout_detail_zones_imported">Z importu WHOOP</string>
+    <string name="workout_detail_zones_derived">Z tętna opaski</string>
+    <string name="workout_detail_zone_desc">Strefa %1$d, %2$d procent, %3$s</string>
+    <string name="workout_detail_key_statistics">Kluczowe statystyki</string>
+    <string name="workout_detail_vs_sport_average">wzgl. średniej z 30 dni</string>
+    <string name="workout_detail_calories">Kalorie</string>
+    <string name="workout_detail_cals">kcal</string>
+    <string name="workout_detail_cals_delta">%1$d kcal</string>
+    <string name="workout_detail_notes">Notatki</string>
+    <!-- Sleep performance contributor rows. -->
+    <string name="sleep_contributor_hours_vs_needed">Godziny a potrzeba</string>
+    <string name="sleep_contributor_consistency">Regularność snu</string>
+    <string name="sleep_contributor_efficiency">Efektywność snu</string>
+    <string name="sleep_contributor_restorative">Sen regeneracyjny</string>
+    <string name="sleep_contributor_legend">Ostatnia noc wzgl. twojej normy</string>
+    <string name="sleep_contributor_desc">%1$s: %2$s, typowo %3$s</string>
+    <string name="sleep_contributor_desc_no_baseline">%1$s: %2$s</string>
 </resources>

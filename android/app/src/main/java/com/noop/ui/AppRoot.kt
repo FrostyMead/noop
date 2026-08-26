@@ -140,6 +140,11 @@ private enum class Destination(
 
     // Group: Activity
     Workouts("workouts", R.string.nav_workouts, Icons.Filled.FitnessCenter),
+    // One session, full screen. Contextual (reached by tapping a workout on Today or in the Workouts
+    // list), so like [StepsCalibration] it is deliberately absent from [drawerGroups] — it is not another
+    // top-level More item. Keyed by (startTs, deviceId), the session's storage key, so the page resolves
+    // exactly the row that was tapped rather than the first one that happens to share a timestamp.
+    WorkoutDetail("workout_detail/{startTs}/{deviceId}", R.string.nav_workouts, Icons.Filled.FitnessCenter),
     Trends("trends", R.string.nav_trends, Icons.AutoMirrored.Filled.TrendingUp),
 
     // Group: Insight
@@ -364,6 +369,10 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         // #627: the journal-reminder card opens the journal (hosted in Insights), same
                         // destination the Sleep screen's morning sheet uses.
                         onOpenJournal = { nav.navigateTopLevel(Destination.Insights.route) },
+                        // A tapped workout row pushes that session's page. Plain `navigate`, not
+                        // navigateTopLevel: this is a drill-down, so it must stack ON Today and pop back
+                        // to it, not replace the tab's start destination.
+                        onOpenWorkout = { nav.navigate(workoutDetailRoute(it.startTs, it.deviceId)) },
                     )
                 }
                 composable(Destination.Live.route) {
@@ -391,7 +400,22 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.Explore.route) { TrendsExploreScreen(viewModel) }
                 composable(Destination.Automations.route) { AutomationsScreen(viewModel) }
                 composable(Destination.SmartAlarm.route) { SmartAlarmScreen(viewModel) }
-                composable(Destination.Workouts.route) { WorkoutsScreen(viewModel) }
+                composable(Destination.Workouts.route) {
+                    WorkoutsScreen(
+                        viewModel,
+                        onOpenDetail = { nav.navigate(workoutDetailRoute(it.startTs, it.deviceId)) },
+                    )
+                }
+                composable(Destination.WorkoutDetail.route) { backStackEntry ->
+                    WorkoutDetailScreen(
+                        vm = viewModel,
+                        startTs = backStackEntry.arguments?.getString("startTs")?.toLongOrNull() ?: 0L,
+                        // The device id is percent-encoded into the route by workoutDetailRoute(); the
+                        // nav library hands it back decoded.
+                        deviceId = backStackEntry.arguments?.getString("deviceId").orEmpty(),
+                        onBack = { nav.popBackStack() },
+                    )
+                }
                 composable(Destination.Intelligence.route) { IntelligenceScreen(viewModel) }
 
                 // --- Placeholder routes (later waves fill these in) ---
@@ -711,7 +735,7 @@ private fun MoreGroupHeader(title: String, expanded: Boolean, onToggle: () -> Un
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(Metrics.cornerXs))
             .clickable(onClick = onToggle)
             .semantics {
                 contentDescription = title
@@ -878,7 +902,16 @@ private fun GlassBottomBar(
 }
 
 /** One nav slot: an icon over a small label. The active destination sits in a soft rounded capsule,
- *  giving the floating island a clear selected state without adding a glow or visual noise. */
+ *  giving the floating island a clear selected state without adding a glow or visual noise.
+ *
+ *  The selected state is NEUTRAL — full-strength primary text on a raised grey capsule — not the mint
+ *  chrome accent it used to be. The bar sits directly under the Today hero, so an accent-green tab put a
+ *  second, slightly-different green (accent #69DDB8) a few dp from the Charge ring's data green
+ *  (#03E095): two saturated greens competing, neither reading as meaningful. The palette's rule is that
+ *  colour belongs to data, and navigation is chrome. Contrast still carries selection (primary vs
+ *  secondary text, filled vs empty capsule), so nothing is lost for accessibility. The quick-action disc
+ *  beside the bar deliberately KEEPS the accent: one intentional spot of brand colour, like the coach orb
+ *  in the WHOOP bar, reads as an anchor rather than noise. */
 @Composable
 private fun BarSlot(
     icon: ImageVector,
@@ -887,15 +920,15 @@ private fun BarSlot(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val tint = if (active) Palette.accent else Palette.textSecondary
-    val slotShape = RoundedCornerShape(18.dp)
+    val tint = if (active) Palette.textPrimary else Palette.textSecondary
+    val slotShape = RoundedCornerShape(Metrics.cornerMd)
     Column(
         modifier = modifier
             .clip(slotShape)
-            .background(if (active) Palette.accentMuted else Color.Transparent, slotShape)
+            .background(if (active) Palette.surfaceInset else Color.Transparent, slotShape)
             .border(
                 width = if (active) 1.dp else 0.dp,
-                color = if (active) Palette.accent.copy(alpha = 0.18f) else Color.Transparent,
+                color = if (active) Palette.hairlineStrong else Color.Transparent,
                 shape = slotShape,
             )
             .clickable(
@@ -982,6 +1015,16 @@ internal fun BrandMark(size: Dp = 22.dp) {
         drawCircle(color = Color.White, radius = stroke * 0.62f, center = center)
     }
 }
+
+/**
+ * The concrete route for one session's detail page.
+ *
+ * A device id is an opaque string that can contain `/` and `:` (a BLE address, an import source tag), and
+ * either would split the path into the wrong number of segments. Percent-encoding it is what makes the
+ * two-argument route safe; Navigation hands the value back decoded.
+ */
+internal fun workoutDetailRoute(startTs: Long, deviceId: String): String =
+    "workout_detail/$startTs/${android.net.Uri.encode(deviceId)}"
 
 /** Navigate to a top-level destination with single-top + state save/restore. */
 private fun NavHostController.navigateTopLevel(route: String) {

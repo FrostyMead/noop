@@ -2349,4 +2349,37 @@
     <string name="l10n_settings_screen_effort_exponential_scale_desc">以指数强度曲线（Banister TRIMP）计算负荷，而不是默认的心率区间（Edwards）。默认方式对低于心率储备一半的部分完全不计分，因此一小时力量训练——组间休息拉低了平均强度——可能几乎得零分。指数曲线没有下限，会大幅提高短时高强度努力的权重。会重新计算你的历史数据，两种标度的最高值相同。默认关闭。</string>
     <string name="l10n_settings_screen_allow_3ad0e369">允许</string>
     <string name="l10n_settings_screen_manage_bf58d17e">管理</string>
+    <string name="today_action_open_workout">打开训练详情</string>
+    <!-- Workout detail page (full-screen session read). -->
+    <string name="workout_detail_avg_hr_label">平均心率</string>
+    <string name="workout_detail_missing_title">未找到该活动</string>
+    <string name="workout_detail_missing_body">此训练已不在你的历史记录中，可能已被删除或与其他活动合并。</string>
+    <string name="workout_detail_back">返回</string>
+    <string name="workout_detail_activity_effort">活动负荷</string>
+    <string name="workout_detail_sport_average">该运动的平均值 %1$s</string>
+    <string name="workout_detail_heart_rate">心率</string>
+    <string name="workout_detail_duration">时长 %1$s</string>
+    <string name="workout_detail_bpm">%1$d bpm</string>
+    <string name="workout_detail_bpm_unit">bpm</string>
+    <string name="workout_detail_zone_span">%1$d–%2$d BPM</string>
+    <string name="workout_detail_zone_span_open">%1$d+ BPM</string>
+    <string name="workout_detail_zone_span_below">低于 %1$d BPM</string>
+    <string name="workout_detail_percent">%1$d%%</string>
+    <string name="workout_detail_zones_imported">来自 WHOOP 导入</string>
+    <string name="workout_detail_zones_derived">来自手环心率</string>
+    <string name="workout_detail_zone_desc">区间 %1$d，%2$d%%，%3$s</string>
+    <string name="workout_detail_key_statistics">关键数据</string>
+    <string name="workout_detail_vs_sport_average">对比 30 天平均</string>
+    <string name="workout_detail_calories">卡路里</string>
+    <string name="workout_detail_cals">千卡</string>
+    <string name="workout_detail_cals_delta">%1$d 千卡</string>
+    <string name="workout_detail_notes">备注</string>
+    <!-- Sleep performance contributor rows. -->
+    <string name="sleep_contributor_hours_vs_needed">睡眠时长与需求</string>
+    <string name="sleep_contributor_consistency">睡眠规律性</string>
+    <string name="sleep_contributor_efficiency">睡眠效率</string>
+    <string name="sleep_contributor_restorative">恢复性睡眠</string>
+    <string name="sleep_contributor_legend">昨夜对比你的常态</string>
+    <string name="sleep_contributor_desc">%1$s：%2$s，常态 %3$s</string>
+    <string name="sleep_contributor_desc_no_baseline">%1$s：%2$s</string>
 </resources>
