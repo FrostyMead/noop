@@ -4,6 +4,9 @@ import androidx.annotation.StringRes
 import com.noop.R
 import com.noop.data.AppleDaily
 import com.noop.data.WorkoutRow
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * The Today heart-rate card's visible window. TODAY means "the whole selected calendar day" (every
@@ -53,6 +56,30 @@ internal fun lastWorkoutsFeed(rows: List<WorkoutRow>): List<WorkoutRow> =
     WorkoutEditing.dedupCrossSource(rows)
         .sortedByDescending { it.startTs }
         .take(4)
+
+/**
+ * The sessions belonging to [day], keyed by where each one STARTED under the logical-day rule.
+ *
+ * Today's activity list used to show [lastWorkoutsFeed] — the four most recent sessions across the whole
+ * recent union — regardless of which day the header was pointing at. Every other part of the dashboard
+ * (the hero scores, the key metrics, the heart-rate card) follows the ◀/▶ navigator, so the workouts card
+ * was the one panel that silently kept showing today's sessions while the user read Tuesday.
+ *
+ * Attribution uses [logicalDay], the SAME 04:00 rollover the rest of Today uses, rather than the calendar
+ * date: a session that starts at 1am belongs to the night before, which is where its Effort was banked.
+ * Reusing that helper is the point — a local `Instant.toLocalDate()` here would put those sessions on a
+ * different day than the score they contributed to.
+ *
+ * Cross-source duplicates are collapsed first, and the result is newest-first, matching the old feed.
+ */
+internal fun workoutsOnDay(
+    rows: List<WorkoutRow>,
+    day: LocalDate,
+    zone: ZoneId = ZoneId.systemDefault(),
+): List<WorkoutRow> =
+    WorkoutEditing.dedupCrossSource(rows)
+        .filter { logicalDay(Instant.ofEpochSecond(it.startTs).atZone(zone)) == day }
+        .sortedByDescending { it.startTs }
 
 /** S5: the Key-Metric overflow cap, mirroring TodayView.metricsCollapsedCap (two columns, three rows). */
 internal const val METRICS_COLLAPSED_CAP = 6

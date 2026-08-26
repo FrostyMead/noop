@@ -1208,14 +1208,7 @@ fun TodayScreen(
         // The recording-status light and the notifications BELL are GONE from the header (iOS has neither);
         // the Updates inbox is relocated into the "+" quick-actions sheet (AppRoot), so the feature stays one
         // tap away without sitting in the Today header. Staggered in as the first section (index 0).
-        val dayTitle = when (selectedDayOffset) {
-            0 -> uiString(R.string.today_day_today)
-            1 -> uiString(R.string.today_day_yesterday)
-            else -> {
-                val keyDate = runCatching { LocalDate.parse(selectedDayKey) }.getOrNull() ?: selectedDay
-                keyDate.format(DateTimeFormatter.ofPattern("EEEE", Locale.getDefault()))
-            }
-        }
+        val dayTitle = relativeDayTitle(selectedDayOffset, selectedDayKey, selectedDay)
         // Human date line under the title — "Friday, 3 July" (weekday + day + month), NOT a numeric date.
         // Dated by the row ACTUALLY on screen (selectedDayKey follows the resolver at offset 0), matching
         // the iOS `dateLine` (EEEE, d MMMM). Mirrors iOS's date-under-title block.
@@ -1544,7 +1537,14 @@ fun TodayScreen(
                             modifier = Modifier.fillMaxWidth().staggeredAppear(stagger),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            TodayWorkoutsSection(footer.recentWorkouts, onOpenWorkout = onOpenWorkout)
+                            TodayWorkoutsSection(
+                                workouts = footer.recentWorkouts,
+                                selectedDay = selectedDay,
+                                // The same relative wording the header uses, so the card says WHICH day it
+                                // is listing rather than a fixed "14 days".
+                                dayLabel = relativeDayTitle(selectedDayOffset, selectedDayKey, selectedDay),
+                                onOpenWorkout = onOpenWorkout,
+                            )
                         }
                         // HEART RATE, the live HR thread / trend card. #991: header + card in a Column.
                         TodaySection.HEART_RATE -> Column(
@@ -6094,16 +6094,26 @@ private fun WorkoutGlyph(icon: ImageVector, modifier: Modifier = Modifier) {
 // MARK: - Today footer sections
 
 @Composable
-private fun TodayWorkoutsSection(workouts: List<WorkoutRow>, onOpenWorkout: (WorkoutRow) -> Unit = {}) {
+private fun TodayWorkoutsSection(
+    workouts: List<WorkoutRow>,
+    selectedDay: LocalDate,
+    dayLabel: String,
+    onOpenWorkout: (WorkoutRow) -> Unit = {},
+) {
     // Single column, newest first: the 2x2 grid truncated durations on narrow phones and read as
     // unrelated stat tiles rather than a chronological feed. Full-width tiles have room for the
     // kcal chip, so the #332 compactDelta workaround is no longer needed here.
-    val feed = lastWorkoutsFeed(workouts)
+    //
+    // Scoped to the DAY the header is pointing at. This card used to show the four most recent sessions
+    // across the whole recent union no matter which day was selected, so navigating back to Tuesday left
+    // today's workouts sitting under Tuesday's scores. Everything else on the dashboard already followed
+    // the navigator; this was the panel that did not.
+    val feed = remember(workouts, selectedDay) { workoutsOnDay(workouts, selectedDay) }
     if (feed.isEmpty()) return
 
     // "Latest Workouts", not "Last": "Last" read as "final". Mirrored on iOS (TodayView). Lives in
     // strings.xml (values + values-de) so the header is localizable like the nav labels.
-    SectionHeader(stringResource(R.string.today_latest_workouts), overline = uiString(R.string.today_workouts_activity), trailing = uiString(R.string.today_workouts_14_days))
+    SectionHeader(stringResource(R.string.today_latest_workouts), overline = uiString(R.string.today_workouts_activity), trailing = dayLabel)
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         feed.forEach { workout ->
             // #whoop-detail: these rows were inert — the dashboard listed a session but offered no way
@@ -6801,6 +6811,25 @@ private fun workoutDuration(row: WorkoutRow): String {
         "${totalMinutes}m"
     }
 }
+
+/**
+ * "Today" / "Yesterday" / the weekday name for the day at [offset].
+ *
+ * One definition, used by the header title AND the activity card's trailing label. They have to agree —
+ * a card headed "Tuesday" under a header reading "Yesterday" is worse than either alone — and the rule
+ * (relative for the last two days, weekday beyond that) is easy to re-type slightly differently.
+ * [selectedDayKey] is preferred over [fallback] because at offset 0 it follows the row actually on
+ * screen, including the pre-04:00 case where that is the previous calendar day.
+ */
+private fun relativeDayTitle(offset: Int, selectedDayKey: String, fallback: LocalDate): String =
+    when (offset) {
+        0 -> uiString(R.string.today_day_today)
+        1 -> uiString(R.string.today_day_yesterday)
+        else -> {
+            val keyDate = runCatching { LocalDate.parse(selectedDayKey) }.getOrNull() ?: fallback
+            keyDate.format(DateTimeFormatter.ofPattern("EEEE", Locale.getDefault()))
+        }
+    }
 
 /** "d MMM · HH:mm–HH:mm" (#157); start-only when the end isn't after the start (zero/unknown span). */
 private fun workoutCaption(row: WorkoutRow): String {
