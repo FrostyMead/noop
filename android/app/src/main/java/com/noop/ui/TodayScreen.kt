@@ -2491,8 +2491,10 @@ private fun ScoreHeroRow(
                 HeroRingColumn(
                     modifier = Modifier.width(col),
                     domain = DomainTheme.Charge,
-                    onInfo = { onScoreInfo(ScoreSection.CHARGE) },
-                    onRingTap = onChargeTap,
+                    // Charge alone has a breakdown; without one (a caller that supplies no tap) the
+                    // column falls back to the scoring guide rather than becoming inert.
+                    onOpen = onChargeTap ?: { onScoreInfo(ScoreSection.CHARGE) },
+                    ringTappable = onChargeTap != null,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         // #802: when today has no Charge yet but a prior night's value is carried, draw a
@@ -2531,7 +2533,7 @@ private fun ScoreHeroRow(
                 HeroRingColumn(
                     modifier = Modifier.width(col),
                     domain = DomainTheme.Effort,
-                    onInfo = { onScoreInfo(ScoreSection.EFFORT) },
+                    onOpen = { onScoreInfo(ScoreSection.EFFORT) },
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         HeroScoreVessel(
@@ -2552,7 +2554,7 @@ private fun ScoreHeroRow(
                     HeroRingColumn(
                         modifier = Modifier.width(col),
                         domain = DomainTheme.Rest,
-                        onInfo = { onScoreInfo(ScoreSection.REST) },
+                        onOpen = { onScoreInfo(ScoreSection.REST) },
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             HeroScoreVessel(
@@ -2601,17 +2603,22 @@ private fun ScoreHeroRow(
 
 /**
  * One hero ring column: the ring, with a tappable UPPERCASE domain label + chevron beneath it (the
- * WHOOP affordance) that opens the matching scoring-guide section. Provenance belongs to the whole hero
- * card and is rendered once by [ScoreHeroRow], so this column only owns score content and navigation.
+ * WHOOP affordance). Provenance belongs to the whole hero card and is rendered once by [ScoreHeroRow], so
+ * this column only owns score content and navigation.
+ *
+ * [onOpen] is the column's ONE destination — the chevron opens it, and so does the ring when
+ * [ringTappable]. It used to take two actions, a label `onInfo` and an optional ring tap, with the ring
+ * silently winning where both were supplied; Charge then passed a scoring-guide lambda that could never
+ * run. One action per column means the call site cannot describe a destination the column does not go to.
  */
 @Composable
 private fun HeroRingColumn(
     domain: DomainTheme,
-    onInfo: () -> Unit,
+    onOpen: () -> Unit,
     modifier: Modifier = Modifier,
-    // A1: when non-null (Charge), the ring is tappable and opens the breakdown sheet. The chevron cue is
-    // overlaid by the caller INSIDE the ring box so it adds no stacked height (#762 self-sizing parity).
-    onRingTap: (() -> Unit)? = null,
+    // A1: Charge's ring is tappable as well as its chevron (both open the breakdown). The other two
+    // domains have no breakdown, so only their chevron is a target.
+    ringTappable: Boolean = false,
     ring: @Composable () -> Unit,
 ) {
     val domainLabel = uiString(
@@ -2627,7 +2634,7 @@ private fun HeroRingColumn(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (onRingTap != null) {
+        if (ringTappable) {
             // liquidPress on the tappable Charge vessel so it settles inward on press (the vessel itself
             // also splashes via LiquidVessel's own tap). Same interactionSource on the clickable + press.
             val ringInteraction = remember { MutableInteractionSource() }
@@ -2639,7 +2646,7 @@ private fun HeroRingColumn(
                         interactionSource = ringInteraction,
                         indication = null,
                         onClickLabel = uiString(R.string.today_action_see_what_shaped, domainLabel),
-                        onClick = onRingTap,
+                        onClick = onOpen,
                     ),
             ) { ring() }
         } else {
@@ -2655,26 +2662,23 @@ private fun HeroRingColumn(
         // for a counterweight. The word reserves 16.dp each side so it can never run under the chevron
         // (which needs 14.dp), keeping the layout honest at any label length, and the whole box is the tap
         // target. RTL still mirrors: Box alignments and the AutoMirrored icon both flip.
-        // Where the chevron leads. A domain with a BREAKDOWN (Charge) sends its visible affordance there
-        // rather than to the scoring guide: the breakdown answers "why is my score this?", which is the
-        // question someone taps to ask, and the guide is one control further in ("How is this calculated"
-        // inside the sheet), so nothing becomes unreachable.
-        //
-        // This matters more since Recovery Vitals stopped rendering inline. Its three metrics now live in
-        // that breakdown, and the only route to it was an UNMARKED tap on the vessel while the one visible
-        // chevron went somewhere else - a destination nobody would find by looking.
-        val labelAction = onRingTap ?: onInfo
+        // The chevron opens the column's destination. For Charge that is the breakdown ("why is my score
+        // this?", the question someone taps to ask) with the scoring guide one control further in; for the
+        // other two, the guide directly. This is the ONLY visible affordance on the column, and before it
+        // pointed here the breakdown was reachable only by an unmarked tap on the vessel while the chevron
+        // went somewhere else - a destination nobody would find by looking, which stopped being survivable
+        // once Recovery Vitals' metrics moved into that sheet.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(50))
                 .clickable(
-                    onClickLabel = if (onRingTap != null) {
+                    onClickLabel = if (ringTappable) {
                         uiString(R.string.today_action_see_what_shaped, domainLabel)
                     } else {
                         null
                     },
-                    onClick = labelAction,
+                    onClick = onOpen,
                 )
                 .padding(vertical = Metrics.space2),
             contentAlignment = Alignment.Center,
@@ -2698,7 +2702,7 @@ private fun HeroRingColumn(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 // The row already carries an onClickLabel for the breakdown case; describing the glyph as
                 // "how it is calculated" there would announce the wrong destination.
-                contentDescription = if (onRingTap != null) null else {
+                contentDescription = if (ringTappable) null else {
                     uiString(R.string.l10n_today_screen_how_domain_label_is_calculated_8897768c, domainLabel)
                 },
                 tint = Palette.textSecondary.copy(alpha = 0.6f),
