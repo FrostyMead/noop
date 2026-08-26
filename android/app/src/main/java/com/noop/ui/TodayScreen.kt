@@ -2655,11 +2655,27 @@ private fun HeroRingColumn(
         // for a counterweight. The word reserves 16.dp each side so it can never run under the chevron
         // (which needs 14.dp), keeping the layout honest at any label length, and the whole box is the tap
         // target. RTL still mirrors: Box alignments and the AutoMirrored icon both flip.
+        // Where the chevron leads. A domain with a BREAKDOWN (Charge) sends its visible affordance there
+        // rather than to the scoring guide: the breakdown answers "why is my score this?", which is the
+        // question someone taps to ask, and the guide is one control further in ("How is this calculated"
+        // inside the sheet), so nothing becomes unreachable.
+        //
+        // This matters more since Recovery Vitals stopped rendering inline. Its three metrics now live in
+        // that breakdown, and the only route to it was an UNMARKED tap on the vessel while the one visible
+        // chevron went somewhere else - a destination nobody would find by looking.
+        val labelAction = onRingTap ?: onInfo
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(50))
-                .clickable { onInfo() }
+                .clickable(
+                    onClickLabel = if (onRingTap != null) {
+                        uiString(R.string.today_action_see_what_shaped, domainLabel)
+                    } else {
+                        null
+                    },
+                    onClick = labelAction,
+                )
                 .padding(vertical = Metrics.space2),
             contentAlignment = Alignment.Center,
         ) {
@@ -2680,7 +2696,11 @@ private fun HeroRingColumn(
             )
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = uiString(R.string.l10n_today_screen_how_domain_label_is_calculated_8897768c, domainLabel),
+                // The row already carries an onClickLabel for the breakdown case; describing the glyph as
+                // "how it is calculated" there would announce the wrong destination.
+                contentDescription = if (onRingTap != null) null else {
+                    uiString(R.string.l10n_today_screen_how_domain_label_is_calculated_8897768c, domainLabel)
+                },
                 tint = Palette.textSecondary.copy(alpha = 0.6f),
                 modifier = Modifier
                     .align(Alignment.CenterEnd)

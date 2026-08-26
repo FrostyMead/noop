@@ -70,9 +70,31 @@ object TodayLayoutPrefs {
         NoopPrefs.of(context).edit().putString(KEY_ORDER, encode(sections)).apply()
     }
 
-    /** The explicitly hidden sections in their editor order. Empty/unset means every section is visible. */
+    /**
+     * Sections hidden until the user says otherwise.
+     *
+     * RECOVERY_VITALS shows HRV, resting HR and respiratory rate as bare values — and all three already
+     * appear in the Charge breakdown behind the hero ring, as contribution bars that say what each one
+     * DID to the score, alongside sleep. Two of them (HRV, resting HR) are Key Metrics tiles as well. So
+     * the dashboard was printing the same numbers up to three times, which is most of what made Today feel
+     * long. The richer presentation wins and the duplicate row block goes; the Customise sheet brings it
+     * back for anyone who preferred it inline.
+     */
+    val defaultHidden: List<TodaySection> = listOf(TodaySection.RECOVERY_VITALS)
+
+    /**
+     * The hidden set for a stored value, applying [defaultHidden] only when NOTHING was ever saved.
+     *
+     * The null/empty distinction is what makes a shipped default safe to change: a null means the user has
+     * never opened Customise, so they get the current default; an empty string is an explicit "hide
+     * nothing" they chose, and must be honoured rather than silently re-hiding a section they un-hid.
+     */
+    fun decodeHiddenOrDefault(raw: String?): List<TodaySection> =
+        if (raw == null) defaultHidden else decodeHidden(raw)
+
+    /** The explicitly hidden sections in their editor order, or [defaultHidden] on a fresh install. */
     fun hidden(context: Context): List<TodaySection> =
-        decodeHidden(NoopPrefs.of(context).getString(KEY_HIDDEN, null))
+        decodeHiddenOrDefault(NoopPrefs.of(context).getString(KEY_HIDDEN, null))
 
     /** Persist the explicit reversible hidden list. */
     fun setHidden(context: Context, sections: List<TodaySection>) {

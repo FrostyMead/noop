@@ -102,6 +102,34 @@ class TodayLayoutPrefsTest {
         assertEquals("workouts,journal", TodayLayoutPrefs.encodeHidden(hidden))
     }
 
+    /**
+     * A fresh install hides Recovery Vitals; a user who has SAVED "hide nothing" keeps it.
+     *
+     * The null-vs-empty distinction is the whole safety of changing a shipped default. null means the user
+     * has never opened Customise, so the current default applies. An empty string is an explicit choice
+     * they made, and re-hiding a section someone deliberately un-hid would be the app overriding them.
+     */
+    @Test
+    fun defaultHidden_appliesOnlyWhenNothingWasEverSaved() {
+        assertEquals(
+            listOf(TodaySection.RECOVERY_VITALS),
+            TodayLayoutPrefs.decodeHiddenOrDefault(null),
+        )
+        assertEquals(emptyList<TodaySection>(), TodayLayoutPrefs.decodeHiddenOrDefault(""))
+        assertEquals(
+            listOf(TodaySection.WORKOUTS),
+            TodayLayoutPrefs.decodeHiddenOrDefault("workouts"),
+        )
+    }
+
+    /** Every default-hidden section must be a real, orderable section, or it could never be un-hidden. */
+    @Test
+    fun defaultHidden_containsOnlyKnownOrderableSections() {
+        TodayLayoutPrefs.defaultHidden.forEach {
+            assertEquals(true, it in TodaySection.defaultOrder)
+        }
+    }
+
     @Test
     fun visibleOrder_filtersHiddenWithoutChangingSavedOrder() {
         val order = "heartRate,hero,yourCards,liveSession,synthesis,keyMetrics,workouts,recoveryVitals,journal"
