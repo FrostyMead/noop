@@ -79,6 +79,10 @@ object Palette {
     // light so the hero fits in with the other cards; the border flips with it. The hero's own text uses
     // the flip-able text* tokens now (readable on either fill).
     val heroFill get() = active.heroFill
+    // The Sleep tab's night scene (top edge, mid band, star field).
+    val restSceneTop get() = active.restSceneTop
+    val restSceneMid get() = active.restSceneMid
+    val sceneStar get() = active.sceneStar
     val heroBorder get() = active.heroBorder
     // Light-on-dark text for a GENUINELY-always-dark surface (twin of StrandPalette.onDarkSecondary). The
     // theme-aware hero no longer uses this; kept for any always-dark chrome.
@@ -483,6 +487,18 @@ object Metrics {
     val legendLineHeight = 3.dp
     val progressHeight = 10.dp
     val editorListMaxHeight = 390.dp
+}
+
+/** Geometry of the Sleep tab's scene hero. */
+object SleepSceneStyle {
+    /** How far the night scene reaches before it has fully settled into the canvas. */
+    val sceneHeight = 620.dp
+    val ringDiameter = 208.dp
+    val ringStroke = 12.dp
+    /** Opacity of the ring's unfilled track, drawn in the primary ink so it reads on either scene. */
+    const val ringTrackAlpha = 0.12f
+    /** Opacity of a tile's card fill over the scene, so the night shows through. */
+    const val tileFillAlpha = 0.62f
 }
 
 /** Geometry of the daily overview, shared by its cards, header and navigation. */

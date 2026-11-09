@@ -31,4 +31,7 @@
     <string name="overview_disconnected">Bracelet déconnecté</string>
     <string name="overview_minutes">%1$d min</string>
     <string name="overview_insight_label">Aperçu</string>
+    <string name="sleep_scene_in_bed">Temps au lit</string>
+    <string name="sleep_scene_asleep">Temps de sommeil</string>
+    <string name="sleep_scene_performance">Performance du sommeil</string>
 </resources>
