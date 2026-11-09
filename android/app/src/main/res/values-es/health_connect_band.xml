@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hc_inspect_action">Comprobar qué envía tu pulsera</string>
+    <string name="hc_inspect_title">Lo que envían tus apps</string>
+    <string name="hc_inspect_window">Últimos 7 días en Health Connect, por app</string>
+    <string name="hc_inspect_empty">Ninguna app ha escrito datos de salud en Health Connect en los últimos 7 días.</string>
+    <string name="hc_inspect_hr">Frecuencia cardiaca</string>
+    <string name="hc_inspect_hr_detail">%1$d lecturas · cada %2$s · %3$d de %4$d días</string>
+    <string name="hc_inspect_sleep">Sueño</string>
+    <string name="hc_inspect_sleep_detail">%1$d noches · %2$d con fases</string>
+    <string name="hc_inspect_hrv">VFC</string>
+    <string name="hc_inspect_rhr">Frecuencia cardiaca en reposo</string>
+    <string name="hc_inspect_spo2">Oxígeno en sangre</string>
+    <string name="hc_inspect_resp">Frecuencia respiratoria</string>
+    <string name="hc_inspect_count">%1$d lecturas</string>
+    <string name="hc_inspect_none">Ninguno</string>
+    <string name="hc_inspect_seconds">~%1$d s</string>
+    <string name="hc_inspect_minutes">~%1$d min</string>
+    <string name="hc_inspect_ready_effort">Frecuencia cardiaca suficiente para Esfuerzo</string>
+    <string name="hc_inspect_ready_sleep">Fases del sueño para la pestaña Sueño</string>
+    <string name="hc_inspect_ready_recovery">VFC y frecuencia en reposo para Recuperación</string>
+    <string name="hc_inspect_close">Cerrar</string>
+    <string name="hc_inspect_failed">Health Connect no está disponible en este teléfono.</string>
+</resources>

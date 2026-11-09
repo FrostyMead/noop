@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hc_inspect_action">Vérifier ce que ton bracelet envoie</string>
+    <string name="hc_inspect_title">Ce que tes apps envoient</string>
+    <string name="hc_inspect_window">7 derniers jours dans Health Connect, par app</string>
+    <string name="hc_inspect_empty">Aucune app n\'a écrit de données de santé dans Health Connect ces 7 derniers jours.</string>
+    <string name="hc_inspect_hr">Fréquence cardiaque</string>
+    <string name="hc_inspect_hr_detail">%1$d mesures · toutes les %2$s · %3$d jours sur %4$d</string>
+    <string name="hc_inspect_sleep">Sommeil</string>
+    <string name="hc_inspect_sleep_detail">%1$d nuits · %2$d avec phases</string>
+    <string name="hc_inspect_hrv">VFC</string>
+    <string name="hc_inspect_rhr">Fréquence cardiaque au repos</string>
+    <string name="hc_inspect_spo2">Oxygène sanguin</string>
+    <string name="hc_inspect_resp">Fréquence respiratoire</string>
+    <string name="hc_inspect_count">%1$d mesures</string>
+    <string name="hc_inspect_none">Aucune</string>
+    <string name="hc_inspect_seconds">~%1$d s</string>
+    <string name="hc_inspect_minutes">~%1$d min</string>
+    <string name="hc_inspect_ready_effort">Fréquence cardiaque assez dense pour l\'Effort</string>
+    <string name="hc_inspect_ready_sleep">Phases de sommeil pour l\'onglet Sommeil</string>
+    <string name="hc_inspect_ready_recovery">VFC et FC au repos pour la Récupération</string>
+    <string name="hc_inspect_close">Fermer</string>
+    <string name="hc_inspect_failed">Health Connect n\'est pas disponible sur ce téléphone.</string>
+</resources>

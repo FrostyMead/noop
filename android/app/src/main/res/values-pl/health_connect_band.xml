@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hc_inspect_action">Sprawdź, co wysyła twoja opaska</string>
+    <string name="hc_inspect_title">Co wysyłają twoje aplikacje</string>
+    <string name="hc_inspect_window">Ostatnie 7 dni w Health Connect, według aplikacji</string>
+    <string name="hc_inspect_empty">Żadna aplikacja nie zapisała danych zdrowotnych w Health Connect w ciągu ostatnich 7 dni.</string>
+    <string name="hc_inspect_hr">Tętno</string>
+    <string name="hc_inspect_hr_detail">%1$d pomiarów · co %2$s · %3$d z %4$d dni</string>
+    <string name="hc_inspect_sleep">Sen</string>
+    <string name="hc_inspect_sleep_detail">%1$d nocy · %2$d z fazami</string>
+    <string name="hc_inspect_hrv">HRV</string>
+    <string name="hc_inspect_rhr">Tętno spoczynkowe</string>
+    <string name="hc_inspect_spo2">Natlenienie krwi</string>
+    <string name="hc_inspect_resp">Częstość oddechu</string>
+    <string name="hc_inspect_count">%1$d pomiarów</string>
+    <string name="hc_inspect_none">Brak</string>
+    <string name="hc_inspect_seconds">~%1$d s</string>
+    <string name="hc_inspect_minutes">~%1$d min</string>
+    <string name="hc_inspect_ready_effort">Tętno wystarczająco często dla Wysiłku</string>
+    <string name="hc_inspect_ready_sleep">Fazy snu dla karty Sen</string>
+    <string name="hc_inspect_ready_recovery">HRV i tętno spoczynkowe dla Regeneracji</string>
+    <string name="hc_inspect_close">Zamknij</string>
+    <string name="hc_inspect_failed">Health Connect nie jest dostępny na tym telefonie.</string>
+</resources>

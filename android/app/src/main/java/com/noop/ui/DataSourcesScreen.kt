@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.SettingsInputAntenna
 import androidx.compose.material.icons.filled.Watch
@@ -65,6 +66,7 @@ import com.noop.data.PairedDeviceRow
 import com.noop.data.SourceKind
 import com.noop.ingest.AppleHealthImporter
 import com.noop.ingest.HealthConnectImporter
+import com.noop.ingest.HealthConnectInspector
 import com.noop.ingest.HealthConnectWriter
 import com.noop.ingest.ActivityFileImporter
 import com.noop.ingest.LiftingImporter
@@ -292,6 +294,39 @@ fun DataSourcesScreen(vm: AppViewModel) {
         }
     }
 
+    // "Check what your band sends" (docs/HEALTH_CONNECT_BAND.md, phase 0): a read-only look at what each
+    // app writes to Health Connect. Null result while reading; the dialog shows a spinner.
+    var showHcInspect by remember { mutableStateOf(false) }
+    var hcInspectResult by remember { mutableStateOf<List<HealthConnectInspector.SourceSummary>?>(null) }
+    fun runHcInspect() {
+        hcInspectResult = null
+        showHcInspect = true
+        scope.launch {
+            val result = HealthConnectInspector.inspect(context)
+            if (result == null) {
+                showHcInspect = false
+                Toast.makeText(context, uiString(R.string.hc_inspect_failed), Toast.LENGTH_LONG).show()
+            } else {
+                hcInspectResult = result
+            }
+        }
+    }
+    val hcInspectPermissionLauncher = rememberLauncherForActivityResult(
+        PermissionController.createRequestPermissionResultContract(),
+    ) { granted ->
+        if (granted.any { it in HealthConnectImporter.PERMISSIONS }) runHcInspect()
+        else Toast.makeText(context, "Health Connect access not granted.", Toast.LENGTH_LONG).show()
+    }
+    fun startHcInspect() {
+        scope.launch {
+            val granted = runCatching {
+                HealthConnectImporter.client(context).permissionController.getGrantedPermissions()
+            }.getOrDefault(emptySet())
+            if (granted.any { it in HealthConnectImporter.PERMISSIONS }) runHcInspect()
+            else hcInspectPermissionLauncher.launch(HealthConnectImporter.PERMISSIONS)
+        }
+    }
+
     val healthConnectAvailable = remember {
         HealthConnectImporter.sdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
     }
@@ -489,6 +524,12 @@ fun DataSourcesScreen(vm: AppViewModel) {
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
                 ) { startHealthConnect() }
+                BackupButton(
+                    label = uiString(R.string.hc_inspect_action),
+                    icon = Icons.Filled.Search,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { startHcInspect() }
 
                 // Auto-sync: pull new Health Connect data when you open NOOP, if it's been longer than
                 // the chosen interval — no manual taps. On-open only (no background worker): it avoids a
@@ -875,6 +916,10 @@ fun DataSourcesScreen(vm: AppViewModel) {
         }
         }
 
+    }
+
+    if (showHcInspect) {
+        HealthConnectInspectorDialog(result = hcInspectResult, onDismiss = { showHcInspect = false })
     }
 
     // ah-delete (#616): strongly-worded confirm before purging the "apple-health" source. On confirm,

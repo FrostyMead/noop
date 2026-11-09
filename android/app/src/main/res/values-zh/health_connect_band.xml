@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hc_inspect_action">查看你的手环发送了什么</string>
+    <string name="hc_inspect_title">你的应用发送了什么</string>
+    <string name="hc_inspect_window">按应用统计 Health Connect 最近 7 天</string>
+    <string name="hc_inspect_empty">最近 7 天没有应用向 Health Connect 写入健康数据。</string>
+    <string name="hc_inspect_hr">心率</string>
+    <string name="hc_inspect_hr_detail">%1$d 条读数 · 每 %2$s · %4$d 天中有 %3$d 天</string>
+    <string name="hc_inspect_sleep">睡眠</string>
+    <string name="hc_inspect_sleep_detail">%1$d 晚 · %2$d 晚有分期</string>
+    <string name="hc_inspect_hrv">HRV</string>
+    <string name="hc_inspect_rhr">静息心率</string>
+    <string name="hc_inspect_spo2">血氧</string>
+    <string name="hc_inspect_resp">呼吸频率</string>
+    <string name="hc_inspect_count">%1$d 条读数</string>
+    <string name="hc_inspect_none">无</string>
+    <string name="hc_inspect_seconds">约 %1$d 秒</string>
+    <string name="hc_inspect_minutes">约 %1$d 分钟</string>
+    <string name="hc_inspect_ready_effort">心率足够频繁，可计算消耗</string>
+    <string name="hc_inspect_ready_sleep">睡眠分期可用于睡眠页</string>
+    <string name="hc_inspect_ready_recovery">HRV 与静息心率可用于恢复</string>
+    <string name="hc_inspect_close">关闭</string>
+    <string name="hc_inspect_failed">此手机上无法使用 Health Connect。</string>
+</resources>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hc_inspect_action">Prüfen, was dein Band sendet</string>
+    <string name="hc_inspect_title">Was deine Apps senden</string>
+    <string name="hc_inspect_window">Letzte 7 Tage in Health Connect, nach App</string>
+    <string name="hc_inspect_empty">Keine App hat in den letzten 7 Tagen Gesundheitsdaten in Health Connect geschrieben.</string>
+    <string name="hc_inspect_hr">Herzfrequenz</string>
+    <string name="hc_inspect_hr_detail">%1$d Messwerte · alle %2$s · %3$d von %4$d Tagen</string>
+    <string name="hc_inspect_sleep">Schlaf</string>
+    <string name="hc_inspect_sleep_detail">%1$d Nächte · %2$d mit Phasen</string>
+    <string name="hc_inspect_hrv">HRV</string>
+    <string name="hc_inspect_rhr">Ruhepuls</string>
+    <string name="hc_inspect_spo2">Blutsauerstoff</string>
+    <string name="hc_inspect_resp">Atemfrequenz</string>
+    <string name="hc_inspect_count">%1$d Messwerte</string>
+    <string name="hc_inspect_none">Keine</string>
+    <string name="hc_inspect_seconds">~%1$d s</string>
+    <string name="hc_inspect_minutes">~%1$d Min.</string>
+    <string name="hc_inspect_ready_effort">Herzfrequenz oft genug für Belastung</string>
+    <string name="hc_inspect_ready_sleep">Schlafphasen für den Schlaf-Tab</string>
+    <string name="hc_inspect_ready_recovery">HRV und Ruhepuls für Erholung</string>
+    <string name="hc_inspect_close">Schließen</string>
+    <string name="hc_inspect_failed">Health Connect ist auf diesem Telefon nicht verfügbar.</string>
+</resources>
