@@ -287,23 +287,25 @@ object RecoveryScorer {
      *
      * "Sustained" = the minimum of 5-minute non-overlapping bin means of the HR
      * samples whose ts ∈ [start, end]. Rejects single-beat dips while capturing
-     * the night's true floor. Returns null when there are no HR samples in window.
+     * the night's true floor. Returns null when there are no plausible HR samples in window.
      *
      * Artifact hardening (#686): a bin may only WIN the floor when it is BOTH well-populated
      * (≥ [restingHRMinBinSamples], so one lone artifact beat can't be a bin "mean") AND
      * physiologically plausible (mean ≥ [restingHRMinPlausibleBpm], rejecting dropout-driven
      * sub-physiological dips). The floor DEFINITION is unchanged — still the minimum of the 5-min
-     * bin means — only artifact bins are barred from being that minimum. If no bin qualifies (a
-     * wholly sparse/degenerate window), fall back to the lowest of ALL bin means, else the
-     * all-sample mean, preserving the never-null-on-data behaviour. Mirrors Swift `restingHR`.
+     * bin means — only artifact bins are barred from being that minimum. Samples below the existing
+     * plausibility floor are excluded BEFORE counting and averaging: zeros must not dilute a valid
+     * bin or qualify a lone reading. If no bin qualifies, the sparse fallback uses only these valid
+     * samples too. A dropout-only window stays null instead of reintroducing rejected artifacts through
+     * the fallback. Mirrors Swift `restingHR`.
      *
      * @param start / @param end window bounds, unix SECONDS (Long).
      */
     fun restingHR(hr: List<HrSample>, start: Long, end: Long): Int? {
-        val seg = hr.filter { it.ts in start..end }
+        val seg = hr.filter { it.ts in start..end && it.bpm >= restingHRMinPlausibleBpm }
         if (seg.isEmpty()) return null
 
-        val means = ArrayList<Double>()      // every bin mean (legacy floor, the fallback)
+        val means = ArrayList<Double>()      // valid-sample bin means (sparse fallback)
         val qualified = ArrayList<Double>()  // bins eligible to WIN the floor (#686)
         var t = start
         while (t < end) {
