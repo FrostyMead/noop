@@ -2382,6 +2382,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Wall-clock ms of the last band sync this process started; throttles the foreground trigger. */
+    private var lastBandSyncMs = 0L
+
+    /** Sync the bands on app open and whenever NOOP returns to the foreground, at most every
+     *  [BAND_SYNC_MIN_INTERVAL_MS]. Foreground-only by design: a true background read needs Health Connect's
+     *  sensitive background-read permission, which the app deliberately does not ask for. */
+    fun syncHealthConnectBandsIfStale() {
+        val now = System.currentTimeMillis()
+        if (lastBandSyncMs != 0L && now - lastBandSyncMs < BAND_SYNC_MIN_INTERVAL_MS) return
+        lastBandSyncMs = now
+        syncHealthConnectBands()
+    }
+
     /** Turn experimental band scoring on or off, then re-score so the change shows straight away. */
     fun setHcBandScoring(on: Boolean) {
         HealthConnectBandPrefs.setScoring(appContext, on)
@@ -2393,7 +2406,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Bands read through Health Connect catch up on app open, beside the Health Connect import. Its own
         // init, AFTER the band state above: an earlier init block would run before those fields exist.
         HealthConnectBandPrefs.load(appContext)
-        syncHealthConnectBands()
+        syncHealthConnectBandsIfStale()
     }
 
     /** How many screens currently want the live HR stream (Live, Health Monitor, …). The stream stays
@@ -2866,6 +2879,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private companion object {
         /** Grace before the first scoring pass, letting the first BLE offload land. */
         const val FIRST_OFFLOAD_GRACE_MS = 6_000L
+        /** Minimum spacing of foreground band syncs (Health Connect reads are cheap but not free). */
+        const val BAND_SYNC_MIN_INTERVAL_MS = 15 * 60 * 1000L
         /**
          * On-device BACKSTOP scoring cadence — 30 min (#836 battery). This loop's watermark gate can't
          * skip while the strap is connected and streaming live HR, because the HR fingerprint

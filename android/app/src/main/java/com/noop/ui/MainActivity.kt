@@ -1286,6 +1286,8 @@ fun NoopRoot() {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 appViewModel.ble.onForeground()
+                // Bands read through Health Connect catch up when NOOP comes to the foreground (throttled).
+                appViewModel.syncHealthConnectBandsIfStale()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
