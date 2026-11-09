@@ -107,6 +107,12 @@ data class PaletteTokens(
     val vesselTrack: Color,
     val vesselInnerShadow: Color,
     val vesselHighlight: Color,
+    // The Sleep tab's night scene behind its hero: [restSceneTop] at the top edge, settling through
+    // [restSceneMid] into the canvas; [sceneStar] is the faint star field (transparent where stars would
+    // read as dirt, i.e. on the light theme).
+    val restSceneTop: Color,
+    val restSceneMid: Color,
+    val sceneStar: Color,
 )
 
 // Dark scheme. NO gold anywhere — the legacy `gold*` tokens hold blue, and `accent` is mint (see below).
@@ -148,6 +154,7 @@ val DarkTokens = PaletteTokens(
     // LiquidRender carried, so the dark theme's hero is unchanged.
     vesselWell = Color(0x8C0A0B10), vesselTrack = Color(0xFF0E0E12),
     vesselInnerShadow = Color(0x4D000000), vesselHighlight = Color(0x17FFFFFF),
+    restSceneTop = Color(0xFF26206A), restSceneMid = Color(0xFF161443), sceneStar = Color(0x8CFFFFFF),
 )
 
 val LightTokens = PaletteTokens(
@@ -190,6 +197,7 @@ val LightTokens = PaletteTokens(
     // catch strengthens, because a white highlight has to work harder against a light body.
     vesselWell = Color(0x66C9CDD6), vesselTrack = Color(0xFFE3E5EB),
     vesselInnerShadow = Color(0x1F000000), vesselHighlight = Color(0x8CFFFFFF),
+    restSceneTop = Color(0xFFDCD6FA), restSceneMid = Color(0xFFEAE8F8), sceneStar = Color(0x00FFFFFF),
 )
 
 // MARK: - Chart style (data-viz colour mode) + the Classic throwback ramps

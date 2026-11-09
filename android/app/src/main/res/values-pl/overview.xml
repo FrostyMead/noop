@@ -31,4 +31,7 @@
     <string name="overview_disconnected">Opaska rozłączona</string>
     <string name="overview_minutes">%1$d min</string>
     <string name="overview_insight_label">Podsumowanie</string>
+    <string name="sleep_scene_in_bed">Czas w łóżku</string>
+    <string name="sleep_scene_asleep">Czas snu</string>
+    <string name="sleep_scene_performance">Jakość snu</string>
 </resources>

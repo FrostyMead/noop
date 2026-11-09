@@ -31,4 +31,7 @@
     <string name="overview_disconnected">Strap disconnected</string>
     <string name="overview_minutes">%1$d min</string>
     <string name="overview_insight_label">Insight</string>
+    <string name="sleep_scene_in_bed">Time in bed</string>
+    <string name="sleep_scene_asleep">Time asleep</string>
+    <string name="sleep_scene_performance">Sleep performance</string>
 </resources>

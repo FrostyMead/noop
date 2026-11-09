@@ -448,11 +448,11 @@ fun MetricComparisonRow(
         modifier = modifier.fillMaxWidth().then(axModifier),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = Palette.textSecondary, modifier = Modifier.size(Metrics.space24))
+        Icon(icon, contentDescription = null, tint = Palette.textTertiary, modifier = Modifier.size(Metrics.iconSmall))
         Spacer(Modifier.width(Metrics.space12))
         Text(
             label,
-            style = NoopType.overline,
+            style = NoopType.subhead.copy(fontWeight = FontWeight.Medium),
             color = Palette.textPrimary,
             modifier = Modifier.weight(1f),
             maxLines = 2,
@@ -460,7 +460,7 @@ fun MetricComparisonRow(
         Spacer(Modifier.width(Metrics.space8))
         Column(horizontalAlignment = Alignment.End) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space4)) {
-                Text(value, style = NoopType.number(20f, weight = FontWeight.Bold), color = Palette.textPrimary, maxLines = 1)
+                Text(value, style = NoopType.number(18f, weight = FontWeight.SemiBold), color = Palette.textPrimary, maxLines = 1)
                 // LEVEL still draws a mark — a filled dot — because an empty slot next to four arrows
                 // reads as a rendering failure rather than as "unchanged".
                 Text(

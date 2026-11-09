@@ -31,4 +31,7 @@
     <string name="overview_disconnected">Pulsera desconectada</string>
     <string name="overview_minutes">%1$d min</string>
     <string name="overview_insight_label">Resumen</string>
+    <string name="sleep_scene_in_bed">Tiempo en cama</string>
+    <string name="sleep_scene_asleep">Tiempo dormido</string>
+    <string name="sleep_scene_performance">Rendimiento del sueño</string>
 </resources>
