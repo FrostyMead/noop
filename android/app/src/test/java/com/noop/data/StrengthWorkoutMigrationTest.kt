@@ -18,10 +18,21 @@ class StrengthWorkoutMigrationTest {
     }
 
     @Test fun entityDefaultsExistingRowsToNull() {
-        assertEquals(32, WhoopDatabase.MIGRATION_32_33.startVersion)
-        assertEquals(33, WhoopDatabase.MIGRATION_32_33.endVersion)
-        assertEquals(33, WhoopDatabase.SCHEMA_VERSION)
+        assertEquals(33, WhoopDatabase.MIGRATION_33_34.startVersion)
+        assertEquals(34, WhoopDatabase.MIGRATION_33_34.endVersion)
+        assertEquals(34, WhoopDatabase.SCHEMA_VERSION)
         val old = WorkoutRow("my-whoop", 1, 2, "Strength Training", "manual")
         assertNull(old.strengthJSON)
+    }
+
+    @Test fun v34AddsWhicheverV33ColumnIsMissing() {
+        val strength = WhoopDatabase.STRENGTH_WORKOUT_MIGRATION_SQL
+        val burst = WhoopDatabase.PPG_BURST_INDEX_MIGRATION_SQL
+        // main's history: v33 has the burst index, so only the strength column is added.
+        assertEquals(strength, WhoopDatabase.migration33To34Statements(hasStrengthJson = false, hasBurstIndex = true))
+        // A store from a build that put the strength step at v33: only the burst index is added.
+        assertEquals(burst, WhoopDatabase.migration33To34Statements(hasStrengthJson = true, hasBurstIndex = false))
+        assertEquals(emptyList<String>(), WhoopDatabase.migration33To34Statements(hasStrengthJson = true, hasBurstIndex = true))
+        assertEquals(strength + burst, WhoopDatabase.migration33To34Statements(hasStrengthJson = false, hasBurstIndex = false))
     }
 }

@@ -7,6 +7,7 @@ import com.noop.data.MetricSeriesRow
 import com.noop.data.OuraRespScale
 import com.noop.data.ScoreInputProvenanceRow
 import com.noop.data.SleepSession
+import com.noop.data.Vo2MaxEstimator
 import com.noop.data.WhoopRepository
 import com.noop.data.WorkoutRow
 import com.noop.protocol.DeviceFamily
@@ -145,6 +146,11 @@ object IntelligenceEngine {
          *  sources are never cached; [RegistryDayOwnerSource] resolves it via DeviceFamily.forRegistryDevice.
          *  Mirrors the Swift `DeviceFamily.forRegistryDevice(model:brand:)` used inline in the reuse gate. */
         suspend fun registeredWhoopFamily(deviceId: String): DeviceFamily? = null
+
+        /** Devices whose own DAILY HRV + resting HR may fill the Charge of a day they owned this pass but
+         *  could not score from RR (a Health Connect band carries summary HRV, no beat-to-beat intervals).
+         *  Default empty, so every other source is byte-identical; Android-only (the bands are). */
+        suspend fun summaryRecoverySources(): List<String> = emptyList()
     }
 
     /** Minimum HR samples in a day's window before it is worth scoring. */
@@ -425,7 +431,7 @@ object IntelligenceEngine {
                 recoveryEpoch, diag, useExperimentalSleepV2, useMotionAwareWake, sleepTraceSink, recoveryTraceSink,
                 stepsTraceSink, universalSink, workoutsTraceSink, hrvTraceSink, deepHrvWindow,
                 spo2CandidateDisplay, effortMethod).first
-        }
+        }.let { fillSummaryRecoveriesAfterPass(repo, ownerSource, importedDeviceId, it) }
         diag("re-score: done — scored ${scored.size} night(s) in ${(System.nanoTime() - reScoreStart) / 1_000_000} ms (#1005)")
         scored
     }
@@ -1946,7 +1952,12 @@ object IntelligenceEngine {
         // Strap-log proof: the RHR-night count the engine sees for the gate , should equal the "N of last 7
         // nights" the readiness card shows; `computed` says whether the value was (re)written this pass.
         diag("fitnessAge gate day=$newestDay rhrNights=${faGate7.mapNotNull { it.restingHr }.size} activityDays=${faGate7.mapNotNull { it.strain }.size} computed=${faPts.isNotEmpty()}")
-        if (faPts.isNotEmpty()) repo.upsertMetricSeries(faPts)
+        if (faPts.isNotEmpty()) {
+            repo.upsertMetricSeriesWithProvenance(
+                rows = faPts,
+                provenance = vo2MaxProvenance(faPts, profile.waistCm, computedId),
+            )
+        }
 
         // ── Vitality / Body Age (Phase 7) , weekly, keyed to the week's Saturday ──
         // Roll the last 7 days' wearable signals into the mortality-hazard model; VitalityEngine gates on
@@ -2154,6 +2165,65 @@ object IntelligenceEngine {
             sleepPerf = restQuality,
             skinTempDev = daily.skinTempDevC,
         )
+    }
+
+    /**
+     * Charge for the days [band] owned this pass whose scored row still has none, from the band's own daily
+     * HRV (RMSSD) + resting HR against the band's own trailing history, through [watchRecoveries] (so it is
+     * the same daily-aggregate Charge an import-only day gets, calibrating until the baseline is usable).
+     * Only days the band OWNED and left unscored are filled: a day another device scored, or one that already
+     * has a Charge, is never touched. Pure; returns day -> Charge.
+     */
+    internal fun summaryRecoveryFills(
+        scored: List<DailyMetric>,
+        ownerByDay: Map<String, String>,
+        band: String,
+        bandDaily: List<DailyMetric>,
+    ): Map<String, Double> {
+        val targets = scored.filter { it.recovery == null && ownerByDay[it.day] == band }.mapTo(HashSet()) { it.day }
+        if (targets.isEmpty() || bandDaily.isEmpty()) return emptyMap()
+        val skip = bandDaily.map { it.day }.filterTo(HashSet()) { it !in targets }
+        return watchRecoveries(bandDaily, skip).mapNotNull { w -> w.recovery?.let { w.day to it } }.toMap()
+    }
+
+    /**
+     * After a scoring pass: a day a [DayOwnerSource.summaryRecoverySources] device OWNED (its persisted
+     * Effort provenance names it) but could not score a Charge for, because it carries no RR, gets the Charge
+     * [summaryRecoveryFills] derives from that device's own daily HRV + resting HR. Writes the filled computed
+     * rows and their recovery provenance, and returns [scored] with the same fills. A no-op (and no extra read)
+     * when no such device is configured, so every other install is byte-identical.
+     *
+     * Runs here rather than inside `analyzeRecentOnCpu`, which sits within ~100 bytes of the JVM's 64 KB
+     * method ceiling (#1524); this reads back what that pass persisted instead.
+     */
+    private suspend fun fillSummaryRecoveriesAfterPass(
+        repo: WhoopRepository,
+        ownerSource: DayOwnerSource?,
+        importedDeviceId: String,
+        scored: List<Computed>,
+    ): List<Computed> {
+        if (scored.isEmpty()) return scored
+        val sources = ownerSource?.summaryRecoverySources().orEmpty()
+        if (sources.isEmpty()) return scored
+        val computedId = importedDeviceId + "-noop"
+        val from = scored.minOf { it.day }
+        val to = scored.maxOf { it.day }
+        val gaps = repo.dailyMetrics(computedId, from, to).filter { it.recovery == null }
+        val ownerByDay = HashMap<String, String>()
+        for (row in gaps) {
+            repo.scoreInputSource(computedId, row.day, "strain")?.takeIf { it in sources }?.let { ownerByDay[row.day] = it }
+        }
+        if (ownerByDay.isEmpty()) return scored
+        val fills = HashMap<String, Pair<String, Double>>()
+        for (band in sources.filter { it in ownerByDay.values }) {
+            // The band's whole history up to the window's end, so its baseline is as mature as its data.
+            val history = repo.dailyMetrics(band, "0000-01-01", to)
+            summaryRecoveryFills(gaps, ownerByDay, band, history).forEach { (day, r) -> fills[day] = band to r }
+        }
+        if (fills.isEmpty()) return scored
+        repo.upsertDailyMetrics(gaps.filter { it.day in fills }.map { it.copy(recovery = fills.getValue(it.day).second) })
+        repo.upsertScoreInputProvenance(fills.map { (day, f) -> ScoreInputProvenanceRow(computedId, day, "recovery", f.first) })
+        return scored.map { c -> fills[c.day]?.let { c.copy(recovery = it.second) } ?: c }
     }
 
     /** One day's source-only (daily-aggregate) recovery output, keyed by day. Mirrors Swift WatchScoredDay. */
@@ -2432,6 +2502,22 @@ object IntelligenceEngine {
         return rows
     }
 
+    /** Method metadata for a newly computed VO₂max point. Empty when [rows] contains no VO₂max value.
+     *  Method selection is captured at compute time; UI readers must never reconstruct it from today's
+     *  profile because changing/removing a waist is a legitimate transition between estimators. */
+    fun vo2MaxProvenance(
+        rows: List<MetricSeriesRow>, waistCm: Double, computedId: String,
+    ): List<ScoreInputProvenanceRow> = rows.firstOrNull { it.key == "vo2max_est" }?.let { point ->
+        listOf(
+            ScoreInputProvenanceRow(
+                deviceId = computedId,
+                day = point.day,
+                key = point.key,
+                sourceId = Vo2MaxEstimator.forWaistCm(waistCm).provenanceId,
+            ),
+        )
+    }.orEmpty()
+
     /** Manual "refresh Fitness Age" (the button on the not-ready card): recompute the weekly Fitness Age
      *  NOW from the PERSISTED merged daily history , NO raw-HR rescoring , and upsert it. Uses the same gate
      *  ([fitnessAgeRows]) and the same date/window logic as the recompute pass, so it reads exactly what the
@@ -2449,7 +2535,12 @@ object IntelligenceEngine {
         val gate7 = repo.daysMerged(importedDeviceId)
             .filter { it.day in oldestDay..newestDay }.sortedBy { it.day }.takeLast(7)
         val rows = fitnessAgeRows(gate7, profile, computedId, saturdayKeyOnOrBefore(newestDay))
-        if (rows.isNotEmpty()) repo.upsertMetricSeries(rows)
+        if (rows.isNotEmpty()) {
+            repo.upsertMetricSeriesWithProvenance(
+                rows = rows,
+                provenance = vo2MaxProvenance(rows, profile.waistCm, computedId),
+            )
+        }
         return rows.isNotEmpty()
     }
 

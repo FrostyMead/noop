@@ -868,13 +868,25 @@ extension WhoopStore {
                 t.primaryKey(["deviceId", "ts"])
             }
         }
-        // v39-strength-workout: versioned set-level strength log attached to a workout. Nullable and
-        // additive so all existing/imported workouts remain byte-for-byte untouched. The payload is
-        // interpreted by `StrengthWorkout`; keeping it as JSON lets the set schema evolve independently
-        // while backups continue to carry one self-contained workout row.
-        migrator.registerMigration("v39-strength-workout") { db in
-            try db.alter(table: "workout") { t in
-                t.add(column: "strengthJSON", .text)
+        // v39 (#979): keep the v26 per-burst counter beside the waveform it segments. Existing rows stay
+        // nil because the counter was discarded before this migration and cannot be reconstructed.
+        migrator.registerMigration("v39-ppg-burst-index") { db in
+            try db.alter(table: "ppgWaveformSample") { t in
+                t.add(column: "burstIndex", .integer)
+            }
+        }
+        // v40: versioned set-level strength log attached to a workout. Nullable and additive so all
+        // existing/imported workouts remain byte-for-byte untouched. The payload is interpreted by
+        // `StrengthWorkout`; keeping it as JSON lets the set schema evolve independently while backups
+        // continue to carry one self-contained workout row. It was first written as "v39" on a branch
+        // that ran in parallel with the PPG burst index above, so a store from that branch may already
+        // carry the column: add it only when absent (the Room twin, MIGRATION_33_34, does the same).
+        migrator.registerMigration("v40-strength-workout") { db in
+            let has = try db.columns(in: "workout").contains { $0.name == "strengthJSON" }
+            if !has {
+                try db.alter(table: "workout") { t in
+                    t.add(column: "strengthJSON", .text)
+                }
             }
         }
         return migrator

@@ -2644,23 +2644,9 @@ object SleepStager {
 
     // ── Per-session HR / HRV ─────────────────────────────────────────────────
 
-    /** Lowest 5-min rolling-mean HR during the session (bpm), or null. */
-    internal fun sessionRestingHR(start: Long, end: Long, hr: List<HrSample>): Int? {
-        val seg = hr.filter { it.ts in start..end }
-        if (seg.isEmpty()) return null
-        val windowS = 5 * 60L
-        val means = ArrayList<Double>()
-        var t = start
-        while (t < end) {
-            val win = seg.filter { it.ts >= t && it.ts < t + windowS }
-            if (win.isNotEmpty()) means.add(win.sumOf { it.bpm }.toDouble() / win.size.toDouble())
-            t += windowS
-        }
-        val m = means.minOrNull()
-        if (m != null) return m.roundToInt()
-        val all = seg.sumOf { it.bpm }.toDouble() / seg.size.toDouble()
-        return all.roundToInt()
-    }
+    /** Lowest five-minute bin mean, using the shared dropout and sparse-bin guards. */
+    internal fun sessionRestingHR(start: Long, end: Long, hr: List<HrSample>): Int? =
+        RecoveryScorer.restingHR(hr, start, end)
 
     /** One 5-min HRV window: its start ts, the sleep stage at its center, the clean-beat count, and the
      *  window RMSSD (null when fewer than 2 clean beats, or when every successive pair straddles a dropped

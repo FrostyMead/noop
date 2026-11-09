@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hc_inspect_action">Vérifier ce que ton bracelet envoie</string>
+    <string name="hc_inspect_title">Ce que tes apps envoient</string>
+    <string name="hc_inspect_window">7 derniers jours dans Health Connect, par app</string>
+    <string name="hc_inspect_empty">Aucune app n\'a écrit de données de santé dans Health Connect ces 7 derniers jours.</string>
+    <string name="hc_inspect_hr">Fréquence cardiaque</string>
+    <string name="hc_inspect_hr_detail">%1$d mesures · toutes les %2$s · %3$d jours sur %4$d</string>
+    <string name="hc_inspect_sleep">Sommeil</string>
+    <string name="hc_inspect_sleep_detail">%1$d nuits · %2$d avec phases</string>
+    <string name="hc_inspect_hrv">VFC</string>
+    <string name="hc_inspect_rhr">Fréquence cardiaque au repos</string>
+    <string name="hc_inspect_spo2">Oxygène sanguin</string>
+    <string name="hc_inspect_resp">Fréquence respiratoire</string>
+    <string name="hc_inspect_count">%1$d mesures</string>
+    <string name="hc_inspect_none">Aucune</string>
+    <string name="hc_inspect_seconds">~%1$d s</string>
+    <string name="hc_inspect_minutes">~%1$d min</string>
+    <string name="hc_inspect_ready_effort">Fréquence cardiaque assez dense pour l\'Effort</string>
+    <string name="hc_inspect_ready_sleep">Phases de sommeil pour l\'onglet Sommeil</string>
+    <string name="hc_inspect_ready_recovery">VFC et FC au repos pour la Récupération</string>
+    <string name="hc_inspect_close">Fermer</string>
+    <string name="hc_inspect_failed">Health Connect n\'est pas disponible sur ce téléphone.</string>
+    <string name="hc_band_add">Ajouter comme appareil</string>
+    <string name="hc_band_added">Ajouté comme appareil</string>
+    <string name="hc_band_section">Bracelets via Health Connect</string>
+    <string name="hc_band_last_sync">Synchronisé %1$s</string>
+    <string name="hc_band_never">Pas encore synchronisé</string>
+    <string name="hc_band_sync_now">Synchroniser les bracelets</string>
+    <string name="hc_band_scoring">Noter les jours avec mon bracelet</string>
+    <string name="hc_band_scoring_detail">Expérimental. Utilise la fréquence cardiaque et le sommeil du bracelet pour l\'Effort et le Sommeil les jours sans sangle. À laisser désactivé tant que ce n\'est pas vérifié sur tes nuits.</string>
+    <string name="hc_band_added_toast">%1$s ajouté : %2$d mesures de fréquence cardiaque et %3$d nuits pour l\'instant.</string>
+    <string name="hc_band_wizard_title">N\'importe quel bracelet ou montre</string>
+    <string name="hc_band_wizard_detail">Garmin, Amazfit, Xiaomi, Samsung, Fitbit et plus, via les données Health Connect de son app</string>
+</resources>

@@ -244,20 +244,22 @@ public enum RecoveryScorer {
     ///
     /// "Sustained" = the minimum of 5-minute non-overlapping bin means of the HR
     /// samples whose ts ∈ [start, end]. Rejects single-beat dips while capturing
-    /// the night's true floor. Returns nil when there are no HR samples in window.
+    /// the night's true floor. Returns nil when there are no plausible HR samples in window.
     ///
     /// Artifact hardening (#686): a bin may only WIN the floor when it is BOTH well-populated
     /// (≥ `restingHRMinBinSamples`, so one lone artifact beat can't be a bin "mean") AND
     /// physiologically plausible (mean ≥ `restingHRMinPlausibleBpm`, rejecting dropout-driven
     /// sub-physiological dips). The floor DEFINITION is unchanged — still the minimum of the
-    /// 5-min bin means — only artifact bins are barred from being that minimum. If no bin
-    /// qualifies (a wholly sparse/degenerate window), fall back to the lowest of ALL bin means,
-    /// else the all-sample mean, preserving the never-nil-on-data behaviour.
+    /// 5-min bin means — only artifact bins are barred from being that minimum. Samples below the existing
+    /// plausibility floor are excluded BEFORE counting and averaging: zeros must not dilute a valid
+    /// bin or qualify a lone reading. If no bin qualifies, the sparse fallback uses only these valid
+    /// samples too. A dropout-only window stays nil instead of reintroducing rejected artifacts through
+    /// the fallback. Mirrors Kotlin `restingHR`.
     public static func restingHR(_ hr: [HRSample], start: Int, end: Int) -> Int? {
-        let seg = hr.filter { $0.ts >= start && $0.ts <= end }
+        let seg = hr.filter { $0.ts >= start && $0.ts <= end && Double($0.bpm) >= restingHRMinPlausibleBpm }
         guard !seg.isEmpty else { return nil }
 
-        var means: [Double] = []          // every bin mean (legacy floor, the fallback)
+        var means: [Double] = []          // valid-sample bin means (sparse fallback)
         var qualified: [Double] = []       // bins eligible to WIN the floor (#686)
         var t = start
         while t < end {
@@ -277,7 +279,7 @@ public enum RecoveryScorer {
         if let m = qualified.min() {
             floor = m
         } else if let m = means.min() {
-            // No bin cleared the artifact bar (sparse window): fall back to the legacy floor.
+            // No bin cleared the count bar: fall back to the floor of valid-sample bins.
             floor = m
         } else {
             floor = Double(seg.reduce(0) { $0 + $1.bpm }) / Double(seg.count)

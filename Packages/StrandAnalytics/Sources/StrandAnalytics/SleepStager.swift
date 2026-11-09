@@ -2435,21 +2435,9 @@ public enum SleepStager {
 
     // MARK: - Per-session HR / HRV
 
-    /// Lowest 5-min rolling-mean HR during the session (bpm), or nil.
+    /// Lowest five-minute bin mean, using the shared dropout and sparse-bin guards.
     static func sessionRestingHR(start: Int, end: Int, hr: [HRSample]) -> Int? {
-        let seg = hr.filter { $0.ts >= start && $0.ts <= end }
-        guard !seg.isEmpty else { return nil }
-        let windowS = 5 * 60
-        var means: [Double] = []
-        var t = start
-        while t < end {
-            let win = seg.filter { $0.ts >= t && $0.ts < t + windowS }
-            if !win.isEmpty { means.append(Double(win.reduce(0) { $0 + $1.bpm }) / Double(win.count)) }
-            t += windowS
-        }
-        if let m = means.min() { return Int(m.rounded()) }
-        let all = Double(seg.reduce(0) { $0 + $1.bpm }) / Double(seg.count)
-        return Int(all.rounded())
+        RecoveryScorer.restingHR(hr, start: start, end: end)
     }
 
     /// One 5-min HRV window: its start ts, the sleep stage at its center, the clean-beat count, and the

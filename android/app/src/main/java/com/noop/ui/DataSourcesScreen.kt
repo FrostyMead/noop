@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.SettingsInputAntenna
 import androidx.compose.material.icons.filled.Watch
@@ -65,6 +67,9 @@ import com.noop.data.PairedDeviceRow
 import com.noop.data.SourceKind
 import com.noop.ingest.AppleHealthImporter
 import com.noop.ingest.HealthConnectImporter
+import com.noop.ingest.HealthConnectBand
+import com.noop.ingest.HealthConnectBandPrefs
+import com.noop.ingest.HealthConnectInspector
 import com.noop.ingest.HealthConnectWriter
 import com.noop.ingest.ActivityFileImporter
 import com.noop.ingest.LiftingImporter
@@ -292,6 +297,15 @@ fun DataSourcesScreen(vm: AppViewModel) {
         }
     }
 
+    // "Check what your band sends" (docs/HEALTH_CONNECT_BAND.md): the shared HealthConnectBandFlow, which
+    // also registers a band.
+    var showHcInspect by remember { mutableStateOf(false) }
+    // Bands registered from the inspector (SourceKind.healthConnect), their sync state and the experimental
+    // scoring switch (default off).
+    var hcBands by remember { mutableStateOf<List<com.noop.data.PairedDeviceRow>>(emptyList()) }
+    val hcBandScoring by vm.hcBandScoring.collectAsStateWithLifecycle()
+    var hcBandSyncing by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { hcBands = runCatching { vm.healthConnectBands() }.getOrDefault(emptyList()) }
     val healthConnectAvailable = remember {
         HealthConnectImporter.sdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
     }
@@ -489,6 +503,61 @@ fun DataSourcesScreen(vm: AppViewModel) {
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
                 ) { startHealthConnect() }
+                BackupButton(
+                    label = uiString(R.string.hc_inspect_action),
+                    icon = Icons.Filled.Search,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { showHcInspect = true }
+                if (hcBands.isNotEmpty()) {
+                    Text(uiString(R.string.hc_band_section), style = NoopType.subhead, color = Palette.textPrimary)
+                    hcBands.forEach { band ->
+                        val last = HealthConnectBandPrefs.lastSync(context, band.id)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(band.nickname ?: band.brand, style = NoopType.subhead, color = Palette.textPrimary,
+                                modifier = Modifier.weight(1f))
+                            Text(
+                                if (last == null) uiString(R.string.hc_band_never)
+                                else uiString(R.string.hc_band_last_sync,
+                                    DateUtils.getRelativeTimeSpanString(last * 1000L).toString()),
+                                style = NoopType.footnote, color = Palette.textTertiary,
+                            )
+                        }
+                    }
+                    BackupButton(
+                        label = uiString(R.string.hc_band_sync_now),
+                        icon = Icons.Filled.Refresh,
+                        enabled = !busy && !hcBandSyncing,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        hcBandSyncing = true
+                        vm.syncHealthConnectBands {
+                            hcBandSyncing = false
+                            scope.launch { hcBands = runCatching { vm.healthConnectBands() }.getOrDefault(hcBands) }
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(uiString(R.string.hc_band_scoring), style = NoopType.subhead, color = Palette.textPrimary)
+                            Text(uiString(R.string.hc_band_scoring_detail), style = NoopType.footnote, color = Palette.textTertiary)
+                        }
+                        Switch(
+                            checked = hcBandScoring,
+                            onCheckedChange = { vm.setHcBandScoring(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Palette.surfaceBase,
+                                checkedTrackColor = Palette.accent,
+                                uncheckedThumbColor = Palette.textSecondary,
+                                uncheckedTrackColor = Palette.surfaceInset,
+                                uncheckedBorderColor = Palette.hairline,
+                            ),
+                        )
+                    }
+                }
 
                 // Auto-sync: pull new Health Connect data when you open NOOP, if it's been longer than
                 // the chosen interval — no manual taps. On-open only (no background worker): it avoids a
@@ -875,6 +944,14 @@ fun DataSourcesScreen(vm: AppViewModel) {
         }
         }
 
+    }
+
+    if (showHcInspect) {
+        HealthConnectBandFlow(
+            vm = vm,
+            onClose = { showHcInspect = false },
+            onAdded = { scope.launch { hcBands = runCatching { vm.healthConnectBands() }.getOrDefault(hcBands) } },
+        )
     }
 
     // ah-delete (#616): strongly-worded confirm before purging the "apple-health" source. On confirm,

@@ -300,6 +300,13 @@ class SourceCoordinator(
         // the exact underlying throw, and reset lastSeenId so the user can retry after switching away.
         return try {
             val devices = registry.all()
+            // A Health Connect band is read from its phone app, never over BLE: activating it must not
+            // tear down the current source or start a scan. The Devices screen offers no "make active"
+            // for one; this guards every other caller.
+            if (devices.firstOrNull { it.id == id }?.sourceKind == SourceKind.healthConnect.name) {
+                log("SourceCoordinator: '$id' is a Health Connect band, not a live source; not activating")
+                return false
+            }
             if (isWhoop(id, devices)) switchToWhoop(id, devices) else switchToStrap(id, devices)
             true
         } catch (t: Throwable) {

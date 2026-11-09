@@ -3,6 +3,7 @@ package com.noop.analytics
 import com.noop.data.DeviceRegistry
 import com.noop.data.DeviceStatus
 import com.noop.data.SourceKind
+import com.noop.ingest.HealthConnectBandPrefs
 import com.noop.protocol.DeviceFamily
 
 /**
@@ -12,16 +13,24 @@ import com.noop.protocol.DeviceFamily
  *
  * Priorities mirror the Swift IntelligenceEngine.resolveDayOwner exactly:
  *   0 = the active strap, 1 = other live (BLE/historyBLE) straps, 2 = imports (cloud/file). Lower wins.
- * Archived devices are excluded. With only the seeded active 'my-whoop' row paired (the default and
+ * Archived devices are excluded, and so is a Health Connect band unless experimental band scoring is on
+ * (it then ranks as 1, like the Apple-only HealthKit watch). With only the seeded active 'my-whoop' row paired (the default and
  * every single-WHOOP install), the sole candidate is priority 0, so the engine resolves to "my-whoop"
  * for every day and the reads stay byte-identical to the single-source path.
  */
-class RegistryDayOwnerSource(private val registry: DeviceRegistry) : IntelligenceEngine.DayOwnerSource {
+class RegistryDayOwnerSource(
+    private val registry: DeviceRegistry,
+    // A Health Connect band (SourceKind.healthConnect) competes for a day only while experimental band
+    // scoring is on; otherwise its stored rows score nothing. Injectable for tests.
+    private val includeHealthConnectBands: () -> Boolean = { HealthConnectBandPrefs.scoringEnabled },
+) : IntelligenceEngine.DayOwnerSource {
 
     override suspend fun candidatePriorities(): List<Pair<String, Int>> {
         val activeId = registry.activeDeviceId()
+        val bands = includeHealthConnectBands()
         return registry.all()
             .filter { it.status != DeviceStatus.archived.name }
+            .filter { bands || it.sourceKind != SourceKind.healthConnect.name }
             .map { d ->
                 val isImport = d.sourceKind == SourceKind.cloudImport.name ||
                     d.sourceKind == SourceKind.fileImport.name
@@ -72,6 +81,14 @@ class RegistryDayOwnerSource(private val registry: DeviceRegistry) : Intelligenc
     // registry lookup skinTempFamily uses; deliberately its own small helper rather than folding into
     // DeviceFamily, which has no Oura case (#1086) and a tolerance-in-seconds isn't a temperature-scale
     // concern. Mirrors the Swift IntelligenceEngine.skinTempWornToleranceSec(forOwner:devices:).
+    // Health Connect bands carry summary HRV, not RR: while band scoring is on, their own daily HRV + resting
+    // HR fill the Charge of the days they own (IntelligenceEngine.fillSummaryRecoveries). Android-only.
+    override suspend fun summaryRecoverySources(): List<String> =
+        if (!includeHealthConnectBands()) emptyList()
+        else registry.all()
+            .filter { it.sourceKind == SourceKind.healthConnect.name && it.status != DeviceStatus.archived.name }
+            .map { it.id }
+
     override suspend fun skinTempWornToleranceSec(deviceId: String): Long {
         val d = registry.all().firstOrNull { it.id == deviceId }
         return if (d?.brand == "Oura") AnalyticsEngine.DEFAULT_OURA_WORN_TOLERANCE_SEC else 0
