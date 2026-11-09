@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.noop.analytics.SleepEditGuard
@@ -474,27 +475,26 @@ internal fun NightNavHeader(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = { if (canGoOlder) onNavigate(offset + 1) }, enabled = canGoOlder) {
-                Icon(Icons.Filled.ChevronLeft, contentDescription = uiString(R.string.l10n_sleep_screen_previous_night_9f339047), tint = if (canGoOlder) Palette.accent else Palette.textTertiary)
+                Icon(Icons.Filled.ChevronLeft, contentDescription = uiString(R.string.l10n_sleep_screen_previous_night_9f339047), tint = if (canGoOlder) Palette.textPrimary else Palette.textTertiary)
             }
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .clip(blockShape)
-                    // Clean material surface (matches DayNavBar) — no gold wash behind the date;
-                    // the gold pop lives only on the date text below.
-                    .background(Palette.surfaceInset)
-                    .border(Metrics.divider, Palette.hairline, blockShape)
+                    // Neutral chrome on any backdrop (including the Sleep scene): the picker is navigation,
+                    // so it carries no colour of its own.
+                    .background(Palette.surfaceRaised.copy(alpha = SleepSceneStyle.tileFillAlpha * CardAppearance.opacity))
                     .clickable(enabled = onPickNightDate != null, onClickLabel = "Pick night date") { showDatePicker = true }
                     .padding(vertical = Metrics.selectorPadding, horizontal = Metrics.selectorPadding),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(nightLabel, style = NoopType.caption, color = Palette.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(nightLabel, style = NoopType.subhead.copy(fontWeight = FontWeight.Medium), color = Palette.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (dateLabel != null) {
-                    Text(dateLabel, style = NoopType.captionNumber, color = Palette.accentHover, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(dateLabel, style = NoopType.captionNumber, color = Palette.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             IconButton(onClick = { if (canGoNewer) onNavigate(offset - 1) }, enabled = canGoNewer) {
-                Icon(Icons.Filled.ChevronRight, contentDescription = uiString(R.string.l10n_sleep_screen_next_night_7deeb06b), tint = if (canGoNewer) Palette.accent else Palette.textTertiary)
+                Icon(Icons.Filled.ChevronRight, contentDescription = uiString(R.string.l10n_sleep_screen_next_night_7deeb06b), tint = if (canGoNewer) Palette.textPrimary else Palette.textTertiary)
             }
         }
         Row(
@@ -505,7 +505,7 @@ internal fun NightNavHeader(
             Text(
                 timeLabel ?: clock ?: "—",
                 style = NoopType.captionNumber,
-                color = Palette.accent,
+                color = Palette.textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

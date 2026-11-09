@@ -78,7 +78,7 @@ private fun StageBreakdownRow(stage: String, minutes: Double, total: Double, col
                 .background(color),
         )
         Text(
-            stage.uppercase(Locale.getDefault()),
+            stage,
             style = NoopType.overline,
             color = Palette.textPrimary,
             maxLines = 1,

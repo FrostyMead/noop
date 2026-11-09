@@ -31,4 +31,7 @@
     <string name="overview_disconnected">Armband getrennt</string>
     <string name="overview_minutes">%1$d Min.</string>
     <string name="overview_insight_label">Einblick</string>
+    <string name="sleep_scene_in_bed">Zeit im Bett</string>
+    <string name="sleep_scene_asleep">Schlafdauer</string>
+    <string name="sleep_scene_performance">Schlafleistung</string>
 </resources>
