@@ -146,6 +146,11 @@ object IntelligenceEngine {
          *  sources are never cached; [RegistryDayOwnerSource] resolves it via DeviceFamily.forRegistryDevice.
          *  Mirrors the Swift `DeviceFamily.forRegistryDevice(model:brand:)` used inline in the reuse gate. */
         suspend fun registeredWhoopFamily(deviceId: String): DeviceFamily? = null
+
+        /** Devices whose own DAILY HRV + resting HR may fill the Charge of a day they owned this pass but
+         *  could not score from RR (a Health Connect band carries summary HRV, no beat-to-beat intervals).
+         *  Default empty, so every other source is byte-identical; Android-only (the bands are). */
+        suspend fun summaryRecoverySources(): List<String> = emptyList()
     }
 
     /** Minimum HR samples in a day's window before it is worth scoring. */
@@ -426,7 +431,7 @@ object IntelligenceEngine {
                 recoveryEpoch, diag, useExperimentalSleepV2, useMotionAwareWake, sleepTraceSink, recoveryTraceSink,
                 stepsTraceSink, universalSink, workoutsTraceSink, hrvTraceSink, deepHrvWindow,
                 spo2CandidateDisplay, effortMethod).first
-        }
+        }.let { fillSummaryRecoveriesAfterPass(repo, ownerSource, importedDeviceId, it) }
         diag("re-score: done — scored ${scored.size} night(s) in ${(System.nanoTime() - reScoreStart) / 1_000_000} ms (#1005)")
         scored
     }
@@ -2160,6 +2165,65 @@ object IntelligenceEngine {
             sleepPerf = restQuality,
             skinTempDev = daily.skinTempDevC,
         )
+    }
+
+    /**
+     * Charge for the days [band] owned this pass whose scored row still has none, from the band's own daily
+     * HRV (RMSSD) + resting HR against the band's own trailing history, through [watchRecoveries] (so it is
+     * the same daily-aggregate Charge an import-only day gets, calibrating until the baseline is usable).
+     * Only days the band OWNED and left unscored are filled: a day another device scored, or one that already
+     * has a Charge, is never touched. Pure; returns day -> Charge.
+     */
+    internal fun summaryRecoveryFills(
+        scored: List<DailyMetric>,
+        ownerByDay: Map<String, String>,
+        band: String,
+        bandDaily: List<DailyMetric>,
+    ): Map<String, Double> {
+        val targets = scored.filter { it.recovery == null && ownerByDay[it.day] == band }.mapTo(HashSet()) { it.day }
+        if (targets.isEmpty() || bandDaily.isEmpty()) return emptyMap()
+        val skip = bandDaily.map { it.day }.filterTo(HashSet()) { it !in targets }
+        return watchRecoveries(bandDaily, skip).mapNotNull { w -> w.recovery?.let { w.day to it } }.toMap()
+    }
+
+    /**
+     * After a scoring pass: a day a [DayOwnerSource.summaryRecoverySources] device OWNED (its persisted
+     * Effort provenance names it) but could not score a Charge for, because it carries no RR, gets the Charge
+     * [summaryRecoveryFills] derives from that device's own daily HRV + resting HR. Writes the filled computed
+     * rows and their recovery provenance, and returns [scored] with the same fills. A no-op (and no extra read)
+     * when no such device is configured, so every other install is byte-identical.
+     *
+     * Runs here rather than inside `analyzeRecentOnCpu`, which sits within ~100 bytes of the JVM's 64 KB
+     * method ceiling (#1524); this reads back what that pass persisted instead.
+     */
+    private suspend fun fillSummaryRecoveriesAfterPass(
+        repo: WhoopRepository,
+        ownerSource: DayOwnerSource?,
+        importedDeviceId: String,
+        scored: List<Computed>,
+    ): List<Computed> {
+        if (scored.isEmpty()) return scored
+        val sources = ownerSource?.summaryRecoverySources().orEmpty()
+        if (sources.isEmpty()) return scored
+        val computedId = importedDeviceId + "-noop"
+        val from = scored.minOf { it.day }
+        val to = scored.maxOf { it.day }
+        val gaps = repo.dailyMetrics(computedId, from, to).filter { it.recovery == null }
+        val ownerByDay = HashMap<String, String>()
+        for (row in gaps) {
+            repo.scoreInputSource(computedId, row.day, "strain")?.takeIf { it in sources }?.let { ownerByDay[row.day] = it }
+        }
+        if (ownerByDay.isEmpty()) return scored
+        val fills = HashMap<String, Pair<String, Double>>()
+        for (band in sources.filter { it in ownerByDay.values }) {
+            // The band's whole history up to the window's end, so its baseline is as mature as its data.
+            val history = repo.dailyMetrics(band, "0000-01-01", to)
+            summaryRecoveryFills(gaps, ownerByDay, band, history).forEach { (day, r) -> fills[day] = band to r }
+        }
+        if (fills.isEmpty()) return scored
+        repo.upsertDailyMetrics(gaps.filter { it.day in fills }.map { it.copy(recovery = fills.getValue(it.day).second) })
+        repo.upsertScoreInputProvenance(fills.map { (day, f) -> ScoreInputProvenanceRow(computedId, day, "recovery", f.first) })
+        return scored.map { c -> fills[c.day]?.let { c.copy(recovery = it.second) } ?: c }
     }
 
     /** One day's source-only (daily-aggregate) recovery output, keyed by day. Mirrors Swift WatchScoredDay. */

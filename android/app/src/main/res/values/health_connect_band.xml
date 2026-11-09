@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hc_inspect_action">Check what your band sends</string>
+    <string name="hc_inspect_title">What your apps send</string>
+    <string name="hc_inspect_window">Last 7 days in Health Connect, by app</string>
+    <string name="hc_inspect_empty">No app has written health data to Health Connect in the last 7 days.</string>
+    <string name="hc_inspect_hr">Heart rate</string>
+    <string name="hc_inspect_hr_detail">%1$d readings · every %2$s · %3$d of %4$d days</string>
+    <string name="hc_inspect_sleep">Sleep</string>
+    <string name="hc_inspect_sleep_detail">%1$d nights · %2$d with stages</string>
+    <string name="hc_inspect_hrv">HRV</string>
+    <string name="hc_inspect_rhr">Resting heart rate</string>
+    <string name="hc_inspect_spo2">Blood oxygen</string>
+    <string name="hc_inspect_resp">Breathing rate</string>
+    <string name="hc_inspect_count">%1$d readings</string>
+    <string name="hc_inspect_none">None</string>
+    <string name="hc_inspect_seconds">~%1$d s</string>
+    <string name="hc_inspect_minutes">~%1$d min</string>
+    <string name="hc_inspect_ready_effort">Heart rate often enough for Effort</string>
+    <string name="hc_inspect_ready_sleep">Sleep stages for the Sleep tab</string>
+    <string name="hc_inspect_ready_recovery">HRV and resting heart rate for Recovery</string>
+    <string name="hc_inspect_close">Close</string>
+    <string name="hc_inspect_failed">Health Connect isn\'t available on this phone.</string>
+    <string name="hc_band_add">Add as a device</string>
+    <string name="hc_band_added">Added as a device</string>
+    <string name="hc_band_section">Bands via Health Connect</string>
+    <string name="hc_band_last_sync">Synced %1$s</string>
+    <string name="hc_band_never">Not synced yet</string>
+    <string name="hc_band_sync_now">Sync bands now</string>
+    <string name="hc_band_scoring">Score days from my band</string>
+    <string name="hc_band_scoring_detail">Experimental. Uses the band\'s heart rate and sleep for Effort and Sleep on days no strap covers. Leave off until it has been checked on your nights.</string>
+    <string name="hc_band_added_toast">Added %1$s: %2$d heart-rate readings and %3$d nights so far.</string>
+    <string name="hc_band_wizard_title">Any band or watch</string>
+    <string name="hc_band_wizard_detail">Garmin, Amazfit, Xiaomi, Samsung, Fitbit and more, through its app\'s Health Connect data</string>
+</resources>

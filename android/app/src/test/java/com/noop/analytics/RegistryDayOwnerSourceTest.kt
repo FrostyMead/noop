@@ -8,6 +8,7 @@ import com.noop.data.PairedDeviceRow
 import com.noop.data.SourceKind
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -227,5 +228,24 @@ class RegistryDayOwnerSourceTest {
         assertEquals(listOf("my-whoop"), ids) // archived 'old' excluded
         // With only the active strap and it having NO data, there is no owner (honest gap).
         assertNull(resolveWith(src, "2026-06-15", mapOf("my-whoop" to false)))
+    }
+
+    @Test
+    fun healthConnectBandOwnsNothingUntilScoringIsOn() = runBlocking {
+        val dao = FakeDao().apply {
+            devices["my-whoop"] = device("my-whoop", "WHOOP", SourceKind.liveBLE, DeviceStatus.active)
+            devices["hc-band"] = device("hc-band", "Garmin Connect", SourceKind.healthConnect, DeviceStatus.paired)
+        }
+        // Off (the default): the band is not a candidate, so a strap-less day it has data for stays unowned
+        // by it and scores exactly as before.
+        val off = RegistryDayOwnerSource(registry(dao), includeHealthConnectBands = { false })
+        assertNull(off.candidatePriorities().toMap()["hc-band"])
+        assertNotEquals("hc-band", resolveWith(off, "2026-06-15", mapOf("my-whoop" to false, "hc-band" to true)))
+
+        // On: the band ranks below the active strap (1, like Apple's HealthKit watch) and fills its gaps only.
+        val on = RegistryDayOwnerSource(registry(dao), includeHealthConnectBands = { true })
+        assertEquals(1, on.candidatePriorities().toMap()["hc-band"])
+        assertEquals("my-whoop", resolveWith(on, "2026-06-15", mapOf("my-whoop" to true, "hc-band" to true)))
+        assertEquals("hc-band", resolveWith(on, "2026-06-16", mapOf("my-whoop" to false, "hc-band" to true)))
     }
 }

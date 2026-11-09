@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Circle
@@ -152,6 +153,9 @@ fun AddDeviceWizard(
      *  instead (import a file)" link and every honest Oura failure offer this, so the destructive takeover
      *  is never the only door. Defaults to a plain close so existing call sites keep compiling. */
     onUseFileImport: () -> Unit = onClose,
+    /** "Any band or watch (via Health Connect)": the caller closes the wizard and runs
+     *  [HealthConnectBandFlow]. Null hides the row. */
+    onAddViaHealthConnect: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -506,7 +510,7 @@ fun AddDeviceWizard(
                 )
             } else {
                 when (step) {
-                    WizardStep.Type -> TypeStep(onPick = { t ->
+                    WizardStep.Type -> TypeStep(onHealthConnect = onAddViaHealthConnect?.let { go -> { stopAllScans(); go() } }, onPick = { t ->
                         type = t; nameDraft = ""
                         // Oura enters its own step machine at the gate, not the generic prep step.
                         if (t == DeviceType.Oura) {
@@ -698,7 +702,7 @@ private fun ouraHeaderSubtitle(step: OuraStep, advanced: Boolean): String? = whe
 // MARK: - Step 1 - type picker
 
 @Composable
-private fun TypeStep(onPick: (DeviceType) -> Unit) {
+private fun TypeStep(onHealthConnect: (() -> Unit)? = null, onPick: (DeviceType) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TypeRow(Icons.Filled.Watch, DeviceType.Whoop5MG.title, "Newer WHOOP band. Experimental in NOOP") {
             onPick(DeviceType.Whoop5MG)
@@ -711,6 +715,12 @@ private fun TypeStep(onPick: (DeviceType) -> Unit) {
         }
         TypeRow(Icons.AutoMirrored.Filled.DirectionsRun, DeviceType.GymEquipment.title, "Treadmill, indoor bike, rower or cross-trainer (Bluetooth FTMS)") {
             onPick(DeviceType.GymEquipment)
+        }
+        // Any band whose own phone app writes to Health Connect (docs/HEALTH_CONNECT_BAND.md).
+        if (onHealthConnect != null) {
+            TypeRow(Icons.Filled.MonitorHeart, uiString(R.string.hc_band_wizard_title), uiString(R.string.hc_band_wizard_detail)) {
+                onHealthConnect()
+            }
         }
 
         // EXPERIMENTAL tier - clearly labelled, opt-in, best-effort. Each is honest about what it can

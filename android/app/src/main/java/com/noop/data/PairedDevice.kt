@@ -74,7 +74,11 @@ enum class DeviceStatus { active, paired, archived }
 // `fileImport` (a whole-day WHOOP CSV export) so the day-owner resolver ranks it BELOW day-spanning
 // imports — a 90-minute ride must never displace a full-day source with HR for the same day. It owns a
 // day only when nothing else has data (a strap-less day). Additive: only the activity-file importer writes it.
-enum class SourceKind { liveBLE, historyBLE, cloudImport, fileImport, ftms, huami, oura, activityFile }
+// `healthConnect`: a band read through its own phone app's Health Connect data (`hc-<package>`, see
+// ingest/HealthConnectBand.kt and docs/HEALTH_CONNECT_BAND.md). Android-only, the twin of Swift's Apple-only
+// `liveAppleWatch`; registry rows never cross platforms (a backup is the platform's own database file).
+// Never active and never a BLE source; it owns a day only when experimental band scoring is on.
+enum class SourceKind { liveBLE, historyBLE, cloudImport, fileImport, ftms, huami, oura, activityFile, healthConnect }
 
 /** A canonical metric a source can provide — drives capability-aware UI + the day-owner resolver.
  *  Stored as the enum name (Swift `Metric` rawValue) inside the comma-joined `capabilities` string. */

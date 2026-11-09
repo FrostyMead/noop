@@ -626,6 +626,9 @@ class WhoopRepository(
     suspend fun scoreInputSource(deviceId: String, day: String, key: String): String? =
         dao.scoreInputSource(deviceId, day, key)
 
+    /** Record which device a computed score cell came from (e.g. a band's summary Charge). */
+    suspend fun upsertScoreInputProvenance(rows: List<ScoreInputProvenanceRow>) = dao.upsertScoreInputProvenance(rows)
+
     suspend fun upsertMetricSeriesWithProvenance(
         rows: List<MetricSeriesRow>,
         provenance: List<ScoreInputProvenanceRow>,

@@ -36,10 +36,15 @@ import androidx.health.connect.client.HealthConnectClient
 import com.noop.data.DailyMetric
 import com.noop.data.CycleTrackingStore
 import com.noop.data.HrSample
+import com.noop.data.PairedDeviceRow
+import com.noop.data.SourceKind
 import com.noop.data.WhoopRepository
 import com.noop.data.WorkoutRow
 import com.noop.ingest.ActivityFileImporter
 import com.noop.ingest.HealthConnectImporter
+import com.noop.ingest.HealthConnectBand
+import com.noop.ingest.HealthConnectBandPrefs
+import com.noop.ingest.HealthConnectInspector
 import com.noop.ble.WhoopBleClient
 import com.noop.ingest.HealthConnectWriter
 import com.noop.ingest.LiftingImporter
@@ -168,6 +173,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Make [id] the single active device, then tell the [SourceCoordinator] so it swaps the live source
      *  (a no-op for a single-WHOOP install). Mirrors macOS DevicesView's `registry.setActive`. */
     suspend fun setActiveDevice(id: String) {
+        // A Health Connect band is never the active source (see SourceKind.healthConnect).
+        if (noopApp.deviceRegistry.all().any { it.id == id && it.sourceKind == SourceKind.healthConnect.name }) return
         noopApp.deviceRegistry.setActive(id)
         // Publish only after BOTH authoritative mutations succeed. A registry/coordinator failure leaves
         // observers on the last fully-applied id instead of advertising a half-switched source.
@@ -2339,6 +2346,69 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // MARK: - Bands via Health Connect (docs/HEALTH_CONNECT_BAND.md)
+
+    private val _hcBandScoring = MutableStateFlow(false)
+    /** Whether days may be scored from a Health Connect band (experimental, default off). */
+    val hcBandScoring: StateFlow<Boolean> = _hcBandScoring.asStateFlow()
+
+    /** Registered Health Connect bands (not archived). */
+    suspend fun healthConnectBands(): List<PairedDeviceRow> =
+        noopApp.deviceRegistry.all().filter {
+            HealthConnectBand.isBand(it) && it.status != com.noop.data.DeviceStatus.archived.name
+        }
+
+    /** Register the app [summary] describes as a band and run its first sync. */
+    suspend fun addHealthConnectBand(summary: HealthConnectInspector.SourceSummary): HealthConnectBand.SyncResult? =
+        withContext(Dispatchers.IO) {
+            val now = System.currentTimeMillis() / 1000L
+            val existing = noopApp.deviceRegistry.all().firstOrNull { it.id == HealthConnectBand.deviceId(summary.packageName) }
+            val row = HealthConnectBand.deviceRow(summary, now, existing)
+            noopApp.deviceRegistry.add(row)
+            runCatching { HealthConnectBand.sync(appContext, repository, noopApp.deviceRegistry, row) }.getOrNull()
+        }.also { if (_hcBandScoring.value) rescoreAfterEdit() }
+
+    /** Pull every band's new heart rate and sleep. Best-effort; a band whose read fails is skipped. */
+    fun syncHealthConnectBands(onDone: (() -> Unit)? = null) {
+        _hcBandScoring.value = HealthConnectBandPrefs.scoringEnabled
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                for (band in runCatching { healthConnectBands() }.getOrDefault(emptyList())) {
+                    runCatching { HealthConnectBand.sync(appContext, repository, noopApp.deviceRegistry, band) }
+                }
+            }
+            if (_hcBandScoring.value) rescoreAfterEdit()
+            onDone?.invoke()
+        }
+    }
+
+    /** Wall-clock ms of the last band sync this process started; throttles the foreground trigger. */
+    private var lastBandSyncMs = 0L
+
+    /** Sync the bands on app open and whenever NOOP returns to the foreground, at most every
+     *  [BAND_SYNC_MIN_INTERVAL_MS]. Foreground-only by design: a true background read needs Health Connect's
+     *  sensitive background-read permission, which the app deliberately does not ask for. */
+    fun syncHealthConnectBandsIfStale() {
+        val now = System.currentTimeMillis()
+        if (lastBandSyncMs != 0L && now - lastBandSyncMs < BAND_SYNC_MIN_INTERVAL_MS) return
+        lastBandSyncMs = now
+        syncHealthConnectBands()
+    }
+
+    /** Turn experimental band scoring on or off, then re-score so the change shows straight away. */
+    fun setHcBandScoring(on: Boolean) {
+        HealthConnectBandPrefs.setScoring(appContext, on)
+        _hcBandScoring.value = on
+        viewModelScope.launch { rescoreAfterEdit() }
+    }
+
+    init {
+        // Bands read through Health Connect catch up on app open, beside the Health Connect import. Its own
+        // init, AFTER the band state above: an earlier init block would run before those fields exist.
+        HealthConnectBandPrefs.load(appContext)
+        syncHealthConnectBandsIfStale()
+    }
+
     /** How many screens currently want the live HR stream (Live, Health Monitor, …). The stream stays
      *  on while ANY of them is visible, so navigating between them doesn't stop it (issue #18: leaving
      *  Live sent TOGGLE_REALTIME_HR=0, leaving Health Monitor with a frozen value). */
@@ -2809,6 +2879,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private companion object {
         /** Grace before the first scoring pass, letting the first BLE offload land. */
         const val FIRST_OFFLOAD_GRACE_MS = 6_000L
+        /** Minimum spacing of foreground band syncs (Health Connect reads are cheap but not free). */
+        const val BAND_SYNC_MIN_INTERVAL_MS = 15 * 60 * 1000L
         /**
          * On-device BACKSTOP scoring cadence — 30 min (#836 battery). This loop's watermark gate can't
          * skip while the strap is connected and streaming live HR, because the HR fingerprint
