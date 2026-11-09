@@ -868,12 +868,12 @@ fun SettingsScreen(
 
         SettingsCard(
             icon = Icons.Filled.Lock,
-            title = "Privacy & app lock",
+            title = uiString(R.string.lock_settings_section),
             blurb = "Require Android to verify you whenever NOOP leaves the foreground. NOOP never stores a separate PIN.",
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SettingsToggleRow(
-                    title = "Lock NOOP",
+                    title = uiString(R.string.lock_setting_title),
                     detail = "Use your fingerprint, face, or phone PIN/pattern/password. Also hides screenshots and the recent-app preview.",
                     checked = appLockEnabled,
                     onCheckedChange = { enable ->
@@ -893,7 +893,7 @@ fun SettingsScreen(
                                 ).show()
                             }
                             else -> activity.authenticateForAppLock(
-                                title = if (enable) "Turn on NOOP app lock" else "Turn off NOOP app lock",
+                                title = if (enable) uiString(R.string.lock_turn_on) else uiString(R.string.lock_turn_off),
                                 onSuccess = {
                                     activity.setAppLockEnabled(enable)
                                     appLockEnabled = enable
@@ -916,10 +916,10 @@ fun SettingsScreen(
                     SettingsNoteRow(
                         icon = Icons.Filled.Warning,
                         iconTint = Palette.strain066,
-                        text = "Your phone does not currently have a secure screen lock. Set one before enabling NOOP app lock.",
+                        text = uiString(R.string.lock_no_secure_lock),
                     )
                     NoopButton(
-                        text = "Open phone security settings",
+                        text = uiString(R.string.lock_open_security),
                         kind = NoopButtonKind.Secondary,
                         fullWidth = true,
                         onClick = { context.startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS)) },

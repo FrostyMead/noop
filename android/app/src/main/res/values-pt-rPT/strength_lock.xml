@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strength workout, app lock and activity export copy (moved out of the Kotlin sources). -->
+<resources>
+    <string name="lock_title">O NOOP está bloqueado</string>
+    <string name="lock_body">Desbloqueia com a impressão digital, o rosto ou o bloqueio de ecrã do telemóvel. A recolha por Bluetooth pode continuar enquanto este ecrã está bloqueado.</string>
+    <string name="lock_unlock">Desbloquear</string>
+    <string name="lock_phone_security">Definições de segurança do telemóvel</string>
+    <string name="lock_unlock_noop">Desbloquear o NOOP</string>
+    <string name="lock_settings_section">Privacidade e bloqueio da app</string>
+    <string name="lock_setting_title">Bloquear o NOOP</string>
+    <string name="lock_turn_on">Ativar o bloqueio do NOOP</string>
+    <string name="lock_turn_off">Desativar o bloqueio do NOOP</string>
+    <string name="lock_no_secure_lock">O teu telemóvel não tem um bloqueio de ecrã seguro. Configura um antes de ativar o bloqueio do NOOP.</string>
+    <string name="lock_open_security">Abrir as definições de segurança</string>
+    <string name="export_gpx">GPX</string>
+    <string name="export_fit">FIT</string>
+    <string name="sw_log_strength">Registar força</string>
+    <string name="sw_strength_log">Registo de força</string>
+    <string name="sw_volume_note_detail">O volume é repetições × carga externa nas séries de trabalho. É mostrado separadamente do Esforço derivado da frequência cardíaca.</string>
+    <string name="sw_log_title">Registar treino de força</string>
+    <string name="sw_edit_title">Editar treino de força</string>
+    <string name="sw_privacy_note">Os exercícios e séries ficam neste dispositivo e na tua cópia de segurança do NOOP.</string>
+    <string name="sw_duration_minutes">Duração (minutos)</string>
+    <string name="sw_routines_header">ROTINAS</string>
+    <string name="sw_routines_empty">Guarda esta estrutura para a reutilizar mais tarde.</string>
+    <string name="sw_routines_some">Carrega uma estrutura guardada ou atualiza a atual.</string>
+    <string name="sw_load_routine">Carregar rotina</string>
+    <string name="sw_save_routine">Guardar rotina</string>
+    <string name="sw_update_routine">Atualizar rotina</string>
+    <string name="sw_rest_timer_header">TEMPORIZADOR DE DESCANSO</string>
+    <string name="sw_next_set_in">Próxima série em</string>
+    <string name="sw_ready">Pronto quando quiseres</string>
+    <string name="sw_rest_complete">Descanso concluído</string>
+    <string name="sw_rest_button">Descanso %1$s</string>
+    <string name="sw_restart">Reiniciar</string>
+    <string name="sw_start">Iniciar</string>
+    <string name="sw_add_30s">+30 s</string>
+    <string name="sw_skip">Saltar</string>
+    <string name="sw_exercise">Exercício</string>
+    <string name="sw_remove">Remover</string>
+    <string name="sw_reps">Repetições</string>
+    <string name="sw_unit_load">Carga (%1$s)</string>
+    <string name="sw_warmup">Aquecimento</string>
+    <string name="sw_remove_set">Remover série</string>
+    <string name="sw_add_set">Adicionar série</string>
+    <string name="sw_add_exercise">Adicionar exercício</string>
+    <string name="sw_volume_note_dialog">Volume = repetições × carga externa nas séries de trabalho. Os aquecimentos e as séries de peso corporal sem carga são excluídos.</string>
+    <string name="sw_validation">Adiciona um exercício e completa cada série com 1–1000 repetições. A carga é opcional.</string>
+    <string name="sw_add">Adicionar</string>
+    <string name="sw_save">Guardar</string>
+    <string name="sw_cancel">Cancelar</string>
+    <string name="sw_routines_title">Rotinas de força</string>
+    <string name="sw_load">Carregar</string>
+    <string name="sw_delete">Eliminar</string>
+    <string name="sw_done">Concluído</string>
+    <string name="sw_save_routine_title">Guardar rotina</string>
+    <string name="sw_routine_name">Nome da rotina</string>
+    <string name="sw_save_routine_hint">Guarda estes exercícios, séries, repetições e cargas para um treino futuro.</string>
+    <string name="sw_started">Iniciado: %1$s</string>
+    <string name="sw_progression_header">PROGRESSÃO</string>
+    <string name="sw_new_pr_one">★ %1$d NOVO RECORDE</string>
+    <string name="sw_new_pr_many">★ %1$d NOVOS RECORDES</string>
+    <string name="sw_progress_compared">Comparado com séries registadas antes. O 1RM estimado usa Epley só em séries de 1–12 repetições.</string>
+    <string name="sw_progress_first">É a primeira marca com carga neste exercício. O 1RM estimado usa Epley para 1–12 repetições.</string>
+</resources>

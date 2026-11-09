@@ -87,7 +87,6 @@ internal fun SleepScoreRing(score: Double, word: String) {
     val sweep by animateFloatAsState(
         targetValue = fraction,
         animationSpec = tween(if (reduceMotion) 0 else Motion.durationSlow, easing = Motion.drawIn),
-        label = "sleepRing",
     )
     val track = Palette.textPrimary.copy(alpha = SleepSceneStyle.ringTrackAlpha)
     val deep = Palette.restDeep
@@ -119,7 +118,7 @@ internal fun SleepScoreRing(score: Double, word: String) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    "${score.roundToInt()}",
+                    score.roundToInt().toString(),
                     style = NoopType.number(52f, FontWeight.Medium).copy(letterSpacing = (-1).sp),
                     color = Palette.textPrimary,
                     modifier = Modifier.alignByBaseline(),

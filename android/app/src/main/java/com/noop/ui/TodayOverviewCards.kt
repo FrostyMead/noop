@@ -154,7 +154,6 @@ private fun TodayScoreRing(score: TodayScore, modifier: Modifier = Modifier) {
     val sweep by animateFloatAsState(
         targetValue = target,
         animationSpec = tween(if (reduceMotion) 0 else Motion.durationSlow, easing = Motion.drawIn),
-        label = "scoreRing",
     )
     Column(
         modifier

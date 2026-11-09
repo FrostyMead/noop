@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strength workout, app lock and activity export copy (moved out of the Kotlin sources). -->
+<resources>
+    <string name="lock_title">NOOP est verrouillé</string>
+    <string name="lock_body">Déverrouille avec ton empreinte, ton visage ou le verrouillage d’écran du téléphone. La collecte Bluetooth peut continuer pendant que cet écran est verrouillé.</string>
+    <string name="lock_unlock">Déverrouiller</string>
+    <string name="lock_phone_security">Réglages de sécurité du téléphone</string>
+    <string name="lock_unlock_noop">Déverrouiller NOOP</string>
+    <string name="lock_settings_section">Confidentialité et verrouillage de l’app</string>
+    <string name="lock_setting_title">Verrouiller NOOP</string>
+    <string name="lock_turn_on">Activer le verrouillage de NOOP</string>
+    <string name="lock_turn_off">Désactiver le verrouillage de NOOP</string>
+    <string name="lock_no_secure_lock">Ton téléphone n’a pas de verrouillage d’écran sécurisé pour le moment. Configures-en un avant d’activer le verrouillage de NOOP.</string>
+    <string name="lock_open_security">Ouvrir les réglages de sécurité</string>
+    <string name="export_gpx">GPX</string>
+    <string name="export_fit">FIT</string>
+    <string name="sw_log_strength">Noter la muscu</string>
+    <string name="sw_strength_log">Journal de musculation</string>
+    <string name="sw_volume_note_detail">Le volume correspond aux répétitions × charge externe des séries de travail. Il est affiché séparément de l’Effort issu de la fréquence cardiaque.</string>
+    <string name="sw_log_title">Noter une séance de musculation</string>
+    <string name="sw_edit_title">Modifier la séance de musculation</string>
+    <string name="sw_privacy_note">Les exercices et séries restent sur cet appareil et dans ta sauvegarde NOOP.</string>
+    <string name="sw_duration_minutes">Durée (minutes)</string>
+    <string name="sw_routines_header">ROUTINES</string>
+    <string name="sw_routines_empty">Enregistre cette structure pour la réutiliser plus tard.</string>
+    <string name="sw_routines_some">Charge une structure enregistrée ou mets à jour l’actuelle.</string>
+    <string name="sw_load_routine">Charger une routine</string>
+    <string name="sw_save_routine">Enregistrer la routine</string>
+    <string name="sw_update_routine">Mettre à jour la routine</string>
+    <string name="sw_rest_timer_header">MINUTEUR DE REPOS</string>
+    <string name="sw_next_set_in">Prochaine série dans</string>
+    <string name="sw_ready">Prêt quand tu veux</string>
+    <string name="sw_rest_complete">Repos terminé</string>
+    <string name="sw_rest_button">Repos %1$s</string>
+    <string name="sw_restart">Recommencer</string>
+    <string name="sw_start">Démarrer</string>
+    <string name="sw_add_30s">+30 s</string>
+    <string name="sw_skip">Passer</string>
+    <string name="sw_exercise">Exercice</string>
+    <string name="sw_remove">Retirer</string>
+    <string name="sw_reps">Répétitions</string>
+    <string name="sw_unit_load">Charge (%1$s)</string>
+    <string name="sw_warmup">Échauffement</string>
+    <string name="sw_remove_set">Retirer la série</string>
+    <string name="sw_add_set">Ajouter une série</string>
+    <string name="sw_add_exercise">Ajouter un exercice</string>
+    <string name="sw_volume_note_dialog">Volume = répétitions × charge externe des séries de travail. Les échauffements et les séries au poids du corps sans lest sont exclus.</string>
+    <string name="sw_validation">Ajoute un exercice et renseigne chaque série avec 1 à 1 000 répétitions. La charge est facultative.</string>
+    <string name="sw_add">Ajouter</string>
+    <string name="sw_save">Enregistrer</string>
+    <string name="sw_cancel">Annuler</string>
+    <string name="sw_routines_title">Routines de musculation</string>
+    <string name="sw_load">Charger</string>
+    <string name="sw_delete">Supprimer</string>
+    <string name="sw_done">Terminé</string>
+    <string name="sw_save_routine_title">Enregistrer la routine</string>
+    <string name="sw_routine_name">Nom de la routine</string>
+    <string name="sw_save_routine_hint">Enregistre ces exercices, séries, répétitions et charges pour une prochaine séance.</string>
+    <string name="sw_started">Démarré : %1$s</string>
+    <string name="sw_progression_header">PROGRESSION</string>
+    <string name="sw_new_pr_one">★ %1$d NOUVEAU RECORD</string>
+    <string name="sw_new_pr_many">★ %1$d NOUVEAUX RECORDS</string>
+    <string name="sw_progress_compared">Comparé aux séries notées auparavant. Le 1RM estimé utilise Epley uniquement pour les séries de 1 à 12 répétitions.</string>
+    <string name="sw_progress_first">C’est la première marque avec charge pour cet exercice. Le 1RM estimé utilise Epley pour 1 à 12 répétitions.</string>
+</resources>

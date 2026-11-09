@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import com.noop.R
 import android.app.KeyguardManager
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
@@ -63,11 +64,10 @@ internal fun AppLockScreen(
                 modifier = Modifier.size(52.dp),
             )
             Spacer(Modifier.height(20.dp))
-            Text("NOOP is locked", style = NoopType.title1, color = Palette.textPrimary)
+            Text(uiString(R.string.lock_title), style = NoopType.title1, color = Palette.textPrimary)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Unlock with your fingerprint, face, or phone screen lock. " +
-                    "Bluetooth collection can continue while this screen is locked.",
+                uiString(R.string.lock_body),
                 style = NoopType.body,
                 color = Palette.textSecondary,
                 textAlign = TextAlign.Center,
@@ -83,7 +83,7 @@ internal fun AppLockScreen(
             }
             Spacer(Modifier.height(24.dp))
             NoopButton(
-                text = "Unlock",
+                text = uiString(R.string.lock_unlock),
                 leadingIcon = Icons.Filled.Lock,
                 fullWidth = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -91,7 +91,7 @@ internal fun AppLockScreen(
             )
             Spacer(Modifier.height(10.dp))
             NoopButton(
-                text = "Phone security settings",
+                text = uiString(R.string.lock_phone_security),
                 kind = NoopButtonKind.Tertiary,
                 fullWidth = true,
                 modifier = Modifier.fillMaxWidth(),

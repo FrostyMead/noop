@@ -364,7 +364,7 @@ fun KeyStatTile(
             if (delta != null) {
                 val glyph = direction.glyph()
                 TrendChip(
-                    text = if (glyph != null) "$glyph $delta" else delta,
+                    text = if (glyph != null) listOf(glyph, delta).joinToString(" ") else delta,
                     color = metricDirectionTint(direction, higherIsBetter),
                 )
             }

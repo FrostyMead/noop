@@ -336,7 +336,7 @@ fun WorkoutStartSection(vm: AppViewModel, onAdd: () -> Unit, onStrength: () -> U
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 AddWorkoutButton(onAdd, Modifier.weight(1f))
                 OutlinedButton(onClick = onStrength, modifier = Modifier.weight(1f)) {
-                    Text("Log strength", style = NoopType.captionNumber)
+                    Text(uiString(R.string.sw_log_strength), style = NoopType.captionNumber)
                 }
             }
         }
@@ -365,7 +365,7 @@ fun WorkoutStartSection(vm: AppViewModel, onAdd: () -> Unit, onStrength: () -> U
                 AddWorkoutButton(onAdd, Modifier.weight(1f))
             }
             OutlinedButton(onClick = onStrength, modifier = Modifier.fillMaxWidth()) {
-                Text("Log strength", style = NoopType.captionNumber)
+                Text(uiString(R.string.sw_log_strength), style = NoopType.captionNumber)
             }
         }
     } else {
@@ -373,7 +373,7 @@ fun WorkoutStartSection(vm: AppViewModel, onAdd: () -> Unit, onStrength: () -> U
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             AddWorkoutButton(onAdd, Modifier.fillMaxWidth())
             OutlinedButton(onClick = onStrength, modifier = Modifier.fillMaxWidth()) {
-                Text("Log strength", style = NoopType.captionNumber)
+                Text(uiString(R.string.sw_log_strength), style = NoopType.captionNumber)
             }
         }
     }

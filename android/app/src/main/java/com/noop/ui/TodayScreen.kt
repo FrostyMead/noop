@@ -2170,7 +2170,7 @@ private fun HeaderDisc(onClick: () -> Unit, description: String, content: @Compo
 private fun StrapStatusPill(connected: Boolean, batteryPct: Double?, onClick: () -> Unit) {
     val status = uiString(if (connected) R.string.overview_connected else R.string.overview_disconnected)
     val battery = batteryPct?.coerceIn(0.0, 100.0)
-    val label = battery?.let { "$status, " + uiString(R.string.today_strap_battery_percent, it.roundToInt()) } ?: status
+    val label = battery?.let { listOf(status, uiString(R.string.today_strap_battery_percent, it.roundToInt())).joinToString(", ") } ?: status
     Row(
         modifier = Modifier
             .height(TodayStyle.chipHeight)

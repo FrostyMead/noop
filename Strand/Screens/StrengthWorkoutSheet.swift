@@ -115,7 +115,11 @@ struct StrengthWorkoutSheet: View {
             Button("Save") { saveRoutine() }
                 .disabled(routineName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || payload == nil)
         } message: {
-            Text(routineError ?? "Save these exercises, sets, reps and loads for a future workout.")
+            if let routineError {
+                Text(routineError)
+            } else {
+                Text("Save these exercises, sets, reps and loads for a future workout.")
+            }
         }
     }
 
@@ -127,7 +131,7 @@ struct StrengthWorkoutSheet: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("REST TIMER").strandOverline()
-                            Text(remaining > 0 ? "Next set in" : (restTimerEnd == nil ? "Ready when you are" : "Rest complete"))
+                            Text(remaining > 0 ? LocalizedStringKey("Next set in") : (restTimerEnd == nil ? LocalizedStringKey("Ready when you are") : LocalizedStringKey("Rest complete")))
                                 .font(StrandFont.footnote).foregroundStyle(StrandPalette.textSecondary)
                         }
                         Spacer()
@@ -175,7 +179,7 @@ struct StrengthWorkoutSheet: View {
                 .background(StrandPalette.effortColor.opacity(0.14),
                             in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text(editing == nil ? "Log Strength Workout" : "Edit Strength Workout")
+                Text(editing == nil ? LocalizedStringKey("Log Strength Workout") : LocalizedStringKey("Edit Strength Workout"))
                     .font(StrandFont.title2).foregroundStyle(StrandPalette.textPrimary)
                 Text("Sets stay on this device and in your NOOP backup.")
                     .font(StrandFont.subhead).foregroundStyle(StrandPalette.textSecondary)
@@ -191,8 +195,8 @@ struct StrengthWorkoutSheet: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("ROUTINES").strandOverline()
                         Text(routineLibrary.routines.isEmpty
-                             ? "Save this layout to reuse it later."
-                             : "Load a saved layout or update the current one.")
+                             ? LocalizedStringKey("Save this layout to reuse it later.")
+                             : LocalizedStringKey("Load a saved layout or update the current one."))
                             .font(StrandFont.footnote).foregroundStyle(StrandPalette.textSecondary)
                     }
                     Spacer()
@@ -301,7 +305,7 @@ struct StrengthWorkoutSheet: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(set.isCompleted.wrappedValue
-                                            ? "Set \(index + 1) complete" : "Complete set \(index + 1)")
+                                            ? LocalizedStringKey("Set \(index + 1) complete") : LocalizedStringKey("Complete set \(index + 1)"))
                         strengthNumberField("8", text: set.reps)
                         strengthNumberField("optional", text: set.weight)
                         Button { set.isWarmup.wrappedValue.toggle() } label: {
@@ -311,7 +315,7 @@ struct StrengthWorkoutSheet: View {
                                 .frame(width: 70)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(set.isWarmup.wrappedValue ? "Warm-up set" : "Working set")
+                        .accessibilityLabel(set.isWarmup.wrappedValue ? LocalizedStringKey("Warm-up set") : LocalizedStringKey("Working set"))
                         Button(role: .destructive) { removeSet(set.wrappedValue.id, from: exercise.wrappedValue.id) } label: {
                             Image(systemName: "minus.circle").foregroundStyle(StrandPalette.textTertiary)
                         }
@@ -339,8 +343,14 @@ struct StrengthWorkoutSheet: View {
                 Text("PROGRESSION").strandOverline()
                 Spacer()
                 if progress.newRecordCount > 0 {
-                    Label("\(progress.newRecordCount) NEW PR\(progress.newRecordCount == 1 ? "" : "S")",
-                          systemImage: "star.fill")
+                    // Two whole phrases, so each language words its own singular and plural.
+                    Group {
+                        if progress.newRecordCount == 1 {
+                            Label("\(progress.newRecordCount) NEW PR", systemImage: "star.fill")
+                        } else {
+                            Label("\(progress.newRecordCount) NEW PRS", systemImage: "star.fill")
+                        }
+                    }
                         .font(StrandFont.footnote)
                         .foregroundStyle(StrandPalette.metricCyan)
                 }
@@ -357,8 +367,8 @@ struct StrengthWorkoutSheet: View {
                                   isRecord: progress.isEstimatedOneRepMaxRecord)
             }
             Text(progress.hasPreviousLoadedSet
-                 ? "Compared with earlier logged sets. Estimated 1RM uses Epley only for sets of 1–12 reps."
-                 : "This is the first loaded mark for this exercise. Estimated 1RM uses Epley for 1–12 reps.")
+                 ? LocalizedStringKey("Compared with earlier logged sets. Estimated 1RM uses Epley only for sets of 1–12 reps.")
+                 : LocalizedStringKey("This is the first loaded mark for this exercise. Estimated 1RM uses Epley for 1–12 reps."))
                 .font(StrandFont.footnote)
                 .foregroundStyle(StrandPalette.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)

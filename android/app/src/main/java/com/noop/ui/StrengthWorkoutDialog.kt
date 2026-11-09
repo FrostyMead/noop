@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import com.noop.R
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.foundation.layout.Arrangement
@@ -152,7 +153,7 @@ internal fun StrengthWorkoutDialog(
         onDismissRequest = onDismiss,
         containerColor = Palette.surfaceOverlay,
         title = {
-            Text(if (editing == null) "Log Strength Workout" else "Edit Strength Workout",
+            Text(if (editing == null) uiString(R.string.sw_log_title) else uiString(R.string.sw_edit_title),
                 style = NoopType.title2, color = Palette.textPrimary)
         },
         text = {
@@ -160,13 +161,13 @@ internal fun StrengthWorkoutDialog(
                 modifier = Modifier.heightIn(max = 620.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text("Exercises and sets stay on this device and in your NOOP backup.",
+                Text(uiString(R.string.sw_privacy_note),
                     style = NoopType.footnote, color = Palette.textSecondary)
                 StrengthStartField(startMillis) { startMillis = it }
                 OutlinedTextField(
                     value = duration,
                     onValueChange = { duration = it },
-                    label = { Text("Duration (minutes)") },
+                    label = { Text(uiString(R.string.sw_duration_minutes)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
@@ -176,14 +177,14 @@ internal fun StrengthWorkoutDialog(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("ROUTINES", style = NoopType.overline, color = Palette.textTertiary)
+                                Text(uiString(R.string.sw_routines_header), style = NoopType.overline, color = Palette.textTertiary)
                                 Text(
-                                    if (routineLibrary.routines.isEmpty()) "Save this layout to reuse it later."
-                                    else "Load a saved layout or update the current one.",
+                                    if (routineLibrary.routines.isEmpty()) uiString(R.string.sw_routines_empty)
+                                    else uiString(R.string.sw_routines_some),
                                     style = NoopType.footnote, color = Palette.textSecondary,
                                 )
                             }
-                            Text("${routineLibrary.routines.size}/${StrengthRoutineLibrary.MAX_ROUTINES}",
+                            Text(listOf(routineLibrary.routines.size, StrengthRoutineLibrary.MAX_ROUTINES).joinToString("/"),
                                 style = NoopType.captionNumber, color = Palette.textTertiary)
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -191,7 +192,7 @@ internal fun StrengthWorkoutDialog(
                                 onClick = { showRoutinePicker = true },
                                 enabled = routineLibrary.routines.isNotEmpty(),
                                 modifier = Modifier.weight(1f),
-                            ) { Text("Load routine") }
+                            ) { Text(uiString(R.string.sw_load_routine)) }
                             OutlinedButton(
                                 onClick = {
                                     val loaded = routineLibrary.routines.firstOrNull { it.id == loadedRoutineID }
@@ -202,7 +203,7 @@ internal fun StrengthWorkoutDialog(
                                 },
                                 enabled = payload != null,
                                 modifier = Modifier.weight(1f),
-                            ) { Text(if (loadedRoutineID == null) "Save routine" else "Update routine") }
+                            ) { Text(if (loadedRoutineID == null) uiString(R.string.sw_save_routine) else uiString(R.string.sw_update_routine)) }
                         }
                     }
                 }
@@ -211,10 +212,10 @@ internal fun StrengthWorkoutDialog(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("REST TIMER", style = NoopType.overline, color = Palette.textTertiary)
+                                Text(uiString(R.string.sw_rest_timer_header), style = NoopType.overline, color = Palette.textTertiary)
                                 Text(
-                                    if (remainingRestSeconds > 0) "Next set in"
-                                    else if (restTimerEndMillis == null) "Ready when you are" else "Rest complete",
+                                    if (remainingRestSeconds > 0) uiString(R.string.sw_next_set_in)
+                                    else if (restTimerEndMillis == null) uiString(R.string.sw_ready) else uiString(R.string.sw_rest_complete),
                                     style = NoopType.footnote,
                                     color = Palette.textSecondary,
                                 )
@@ -232,7 +233,7 @@ internal fun StrengthWorkoutDialog(
                                     routinePrefs.edit().putInt(StrengthRestTimer.PREFS_KEY, restSeconds).apply()
                                 },
                                 modifier = Modifier.weight(1f),
-                            ) { Text("Rest ${formatRestTimer(restSeconds)}") }
+                            ) { Text(uiString(R.string.sw_rest_button, formatRestTimer(restSeconds))) }
                             Button(
                                 onClick = {
                                     val current = System.currentTimeMillis()
@@ -240,7 +241,7 @@ internal fun StrengthWorkoutDialog(
                                     restTimerEndMillis = current + restSeconds * 1_000L
                                 },
                                 modifier = Modifier.weight(1f),
-                            ) { Text(if (remainingRestSeconds > 0) "Restart" else "Start") }
+                            ) { Text(if (remainingRestSeconds > 0) uiString(R.string.sw_restart) else uiString(R.string.sw_start)) }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             OutlinedButton(
@@ -251,12 +252,12 @@ internal fun StrengthWorkoutDialog(
                                 },
                                 enabled = restTimerEndMillis != null,
                                 modifier = Modifier.weight(1f),
-                            ) { Text("+30s") }
+                            ) { Text(uiString(R.string.sw_add_30s)) }
                             TextButton(
                                 onClick = { restTimerEndMillis = null },
                                 enabled = restTimerEndMillis != null,
                                 modifier = Modifier.weight(1f),
-                            ) { Text("Skip") }
+                            ) { Text(uiString(R.string.sw_skip)) }
                         }
                     }
                 }
@@ -272,14 +273,14 @@ internal fun StrengthWorkoutDialog(
                                             if (i == exerciseIndex) value.copy(name = name) else value
                                         }
                                     },
-                                    label = { Text("Exercise") },
+                                    label = { Text(uiString(R.string.sw_exercise)) },
                                     singleLine = true,
                                     modifier = Modifier.weight(1f),
                                 )
                                 TextButton(
                                     onClick = { exercises = exercises.filterIndexed { i, _ -> i != exerciseIndex } },
                                     enabled = exercises.size > 1,
-                                ) { Text("Remove", color = Palette.statusCritical) }
+                                ) { Text(uiString(R.string.sw_remove), color = Palette.statusCritical) }
                             }
 
                             exercise.sets.forEachIndexed { setIndex, set ->
@@ -288,7 +289,7 @@ internal fun StrengthWorkoutDialog(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("${setIndex + 1}", style = NoopType.captionNumber,
+                                        Text((setIndex + 1).toString(), style = NoopType.captionNumber,
                                             color = Palette.textTertiary)
                                         Checkbox(
                                             checked = set.completed,
@@ -309,7 +310,7 @@ internal fun StrengthWorkoutDialog(
                                         onValueChange = { reps ->
                                             exercises = updateSet(exercises, exerciseIndex, setIndex) { it.copy(reps = reps) }
                                         },
-                                        label = { Text("Reps") },
+                                        label = { Text(uiString(R.string.sw_reps)) },
                                         singleLine = true,
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                         modifier = Modifier.weight(1f),
@@ -319,7 +320,7 @@ internal fun StrengthWorkoutDialog(
                                         onValueChange = { load ->
                                             exercises = updateSet(exercises, exerciseIndex, setIndex) { it.copy(weight = load) }
                                         },
-                                        label = { Text("$unit load") },
+                                        label = { Text(uiString(R.string.sw_unit_load, unit)) },
                                         placeholder = { Text("optional") },
                                         singleLine = true,
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -334,7 +335,7 @@ internal fun StrengthWorkoutDialog(
                                                 }
                                             },
                                         )
-                                        Text("Warm-up", style = NoopType.overline, color = Palette.textTertiary)
+                                        Text(uiString(R.string.sw_warmup), style = NoopType.overline, color = Palette.textTertiary)
                                     }
                                 }
                                 if (exercise.sets.size > 1) {
@@ -344,7 +345,7 @@ internal fun StrengthWorkoutDialog(
                                                 sets = value.sets.filterIndexed { j, _ -> j != setIndex },
                                             ) else value
                                         }
-                                    }) { Text("Remove set", color = Palette.textTertiary) }
+                                    }) { Text(uiString(R.string.sw_remove_set), color = Palette.textTertiary) }
                                 }
                             }
 
@@ -358,7 +359,7 @@ internal fun StrengthWorkoutDialog(
                                         ),
                                     ) else value
                                 }
-                            }) { Text("Add set") }
+                            }) { Text(uiString(R.string.sw_add_set)) }
 
                             StrengthProgressCard(progressionByExercise[exercise.id], imperial)
                         }
@@ -368,7 +369,7 @@ internal fun StrengthWorkoutDialog(
                 OutlinedButton(
                     onClick = { exercises = exercises + blankExercise() },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Add exercise") }
+                ) { Text(uiString(R.string.sw_add_exercise)) }
 
                 payload?.let { strength ->
                     NoopCard {
@@ -380,14 +381,14 @@ internal fun StrengthWorkoutDialog(
                                 val displayVolume = strength.volumeLoadKg * if (imperial) POUNDS_PER_KG else 1.0
                                 SummaryValue("Volume", "${cleanLoad(displayVolume)} $unit", Modifier.weight(1f))
                             }
-                            Text("Volume = reps × external load for working sets. Warm-ups and unweighted bodyweight sets are excluded.",
+                            Text(uiString(R.string.sw_volume_note_dialog),
                                 style = NoopType.footnote, color = Palette.textTertiary,
                                 modifier = Modifier.padding(top = 10.dp))
                         }
                     }
                 }
                 if (built == null) {
-                    Text("Add an exercise and complete every set with 1–1,000 reps. Load is optional.",
+                    Text(uiString(R.string.sw_validation),
                         style = NoopType.footnote, color = Palette.statusWarning)
                 }
             }
@@ -401,16 +402,16 @@ internal fun StrengthWorkoutDialog(
                     }
                 },
                 enabled = built != null,
-            ) { Text(if (editing == null) "Add" else "Save") }
+            ) { Text(if (editing == null) uiString(R.string.sw_add) else uiString(R.string.sw_save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(uiString(R.string.sw_cancel)) } },
     )
 
     if (showRoutinePicker) {
         AlertDialog(
             onDismissRequest = { showRoutinePicker = false },
             containerColor = Palette.surfaceOverlay,
-            title = { Text("Strength routines", style = NoopType.title2, color = Palette.textPrimary) },
+            title = { Text(uiString(R.string.sw_routines_title), style = NoopType.title2, color = Palette.textPrimary) },
             text = {
                 Column(
                     modifier = Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
@@ -435,7 +436,7 @@ internal fun StrengthWorkoutDialog(
                                 loadedRoutineID = routine.id
                                 routineName = routine.name
                                 showRoutinePicker = false
-                            }) { Text("Load") }
+                            }) { Text(uiString(R.string.sw_load)) }
                             TextButton(onClick = {
                                 val next = routineLibrary.removing(routine.id)
                                 routinePrefs.edit().putString(StrengthRoutineLibrary.PREFS_KEY, next.encodedJSON()).apply()
@@ -445,12 +446,12 @@ internal fun StrengthWorkoutDialog(
                                     routineName = ""
                                 }
                                 if (next.routines.isEmpty()) showRoutinePicker = false
-                            }) { Text("Delete", color = Palette.statusCritical) }
+                            }) { Text(uiString(R.string.sw_delete), color = Palette.statusCritical) }
                         }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showRoutinePicker = false }) { Text("Done") } },
+            confirmButton = { TextButton(onClick = { showRoutinePicker = false }) { Text(uiString(R.string.sw_done)) } },
         )
     }
 
@@ -458,18 +459,18 @@ internal fun StrengthWorkoutDialog(
         AlertDialog(
             onDismissRequest = { showSaveRoutine = false; routineError = null },
             containerColor = Palette.surfaceOverlay,
-            title = { Text("Save Routine", style = NoopType.title2, color = Palette.textPrimary) },
+            title = { Text(uiString(R.string.sw_save_routine_title), style = NoopType.title2, color = Palette.textPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = routineName,
                         onValueChange = { routineName = it; routineError = null },
-                        label = { Text("Routine name") },
+                        label = { Text(uiString(R.string.sw_routine_name)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Text(
-                        routineError ?: "Save these exercises, sets, reps and loads for a future workout.",
+                        routineError ?: uiString(R.string.sw_save_routine_hint),
                         style = NoopType.footnote,
                         color = if (routineError == null) Palette.textSecondary else Palette.statusWarning,
                     )
@@ -503,10 +504,10 @@ internal fun StrengthWorkoutDialog(
                         showSaveRoutine = false
                     },
                     enabled = routineName.trim().isNotEmpty() && payload != null,
-                ) { Text("Save") }
+                ) { Text(uiString(R.string.sw_save)) }
             },
             dismissButton = {
-                TextButton(onClick = { showSaveRoutine = false; routineError = null }) { Text("Cancel") }
+                TextButton(onClick = { showSaveRoutine = false; routineError = null }) { Text(uiString(R.string.sw_cancel)) }
             },
         )
     }
@@ -538,7 +539,7 @@ private fun StrengthStartField(millis: Long, onPick: (Long) -> Unit) {
             ).apply { datePicker.maxDate = System.currentTimeMillis() }.show()
         },
         modifier = Modifier.fillMaxWidth(),
-    ) { Text("Started $label") }
+    ) { Text(uiString(R.string.sw_started, label)) }
 }
 
 @Composable
@@ -557,11 +558,11 @@ private fun StrengthProgressCard(progress: StrengthExerciseProgress?, imperial: 
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Text("PROGRESSION", style = NoopType.overline, color = Palette.textTertiary,
+            Text(uiString(R.string.sw_progression_header), style = NoopType.overline, color = Palette.textTertiary,
                 modifier = Modifier.weight(1f))
             if (progress.newRecordCount > 0) {
                 Text(
-                    "★ ${progress.newRecordCount} NEW PR${if (progress.newRecordCount == 1) "" else "S"}",
+                    if (progress.newRecordCount == 1) uiString(R.string.sw_new_pr_one, progress.newRecordCount) else uiString(R.string.sw_new_pr_many, progress.newRecordCount),
                     style = NoopType.footnote,
                     color = Palette.metricCyan,
                 )
@@ -584,8 +585,8 @@ private fun StrengthProgressCard(progress: StrengthExerciseProgress?, imperial: 
         }
         Text(
             if (progress.hasPreviousLoadedSet)
-                "Compared with earlier logged sets. Estimated 1RM uses Epley only for sets of 1–12 reps."
-            else "This is the first loaded mark for this exercise. Estimated 1RM uses Epley for 1–12 reps.",
+                uiString(R.string.sw_progress_compared)
+            else uiString(R.string.sw_progress_first),
             style = NoopType.footnote,
             color = Palette.textTertiary,
         )

@@ -1781,7 +1781,7 @@ internal fun StrengthDetailCard(strength: StrengthWorkout, unitSystem: UnitSyste
         return "$number ${if (imperial) "lb" else "kg"}"
     }
     CardDivider()
-    Text("Strength log", style = NoopType.subhead, color = Palette.textPrimary)
+    Text(uiString(R.string.sw_strength_log), style = NoopType.subhead, color = Palette.textPrimary)
     NoopCard {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(modifier = Modifier.fillMaxWidth()) {
@@ -1805,7 +1805,7 @@ internal fun StrengthDetailCard(strength: StrengthWorkout, unitSystem: UnitSyste
                 }
             }
             Text(
-                "Volume is reps × external load for working sets. It is shown separately from HR-derived Effort.",
+                uiString(R.string.sw_volume_note_detail),
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )

@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import com.noop.R
 import android.Manifest
 import android.app.Activity
 import android.app.KeyguardManager
@@ -277,7 +278,7 @@ class MainActivity : ComponentActivity() {
         if (!appLocked || !AppLockPrefs.isEnabled(this) || authenticationInFlight) return
         appLockMessage = null
         authenticateForAppLock(
-            title = "Unlock NOOP",
+            title = uiString(R.string.lock_unlock_noop),
             onSuccess = {
                 appLockMessage = null
                 appLocked = false

@@ -516,13 +516,13 @@ private fun WorkoutRouteExport(row: WorkoutRow) {
             )
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                 NoopButton(
-                    text = "GPX",
+                    text = uiString(R.string.export_gpx),
                     kind = NoopButtonKind.Secondary,
                     modifier = Modifier.weight(1f),
                     onClick = { scope.launch { RouteExportShare.share(context, RouteExport.Format.GPX, track, row) } },
                 )
                 NoopButton(
-                    text = "FIT",
+                    text = uiString(R.string.export_fit),
                     kind = NoopButtonKind.Secondary,
                     modifier = Modifier.weight(1f),
                     onClick = { scope.launch { RouteExportShare.share(context, RouteExport.Format.FIT, track, row) } },
