@@ -30,4 +30,6 @@
     <string name="hc_band_scoring">Score days from my band</string>
     <string name="hc_band_scoring_detail">Experimental. Uses the band\'s heart rate and sleep for Effort and Sleep on days no strap covers. Leave off until it has been checked on your nights.</string>
     <string name="hc_band_added_toast">Added %1$s: %2$d heart-rate readings and %3$d nights so far.</string>
+    <string name="hc_band_wizard_title">Any band or watch</string>
+    <string name="hc_band_wizard_detail">Garmin, Amazfit, Xiaomi, Samsung, Fitbit and more, through its app\'s Health Connect data</string>
 </resources>

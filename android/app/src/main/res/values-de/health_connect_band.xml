@@ -30,4 +30,6 @@
     <string name="hc_band_scoring">Tage mit meinem Band bewerten</string>
     <string name="hc_band_scoring_detail">Experimentell. Nutzt Herzfrequenz und Schlaf des Bands für Belastung und Schlaf an Tagen ohne Strap. Aus lassen, bis es an deinen Nächten geprüft ist.</string>
     <string name="hc_band_added_toast">%1$s hinzugefügt: bisher %2$d Herzfrequenzwerte und %3$d Nächte.</string>
+    <string name="hc_band_wizard_title">Beliebiges Band oder Uhr</string>
+    <string name="hc_band_wizard_detail">Garmin, Amazfit, Xiaomi, Samsung, Fitbit und mehr, über die Health-Connect-Daten der App</string>
 </resources>

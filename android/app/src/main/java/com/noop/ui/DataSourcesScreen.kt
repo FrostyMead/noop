@@ -297,8 +297,8 @@ fun DataSourcesScreen(vm: AppViewModel) {
         }
     }
 
-    // "Check what your band sends" (docs/HEALTH_CONNECT_BAND.md, phase 0): a read-only look at what each
-    // app writes to Health Connect. Null result while reading; the dialog shows a spinner.
+    // "Check what your band sends" (docs/HEALTH_CONNECT_BAND.md): the shared HealthConnectBandFlow, which
+    // also registers a band.
     var showHcInspect by remember { mutableStateOf(false) }
     // Bands registered from the inspector (SourceKind.healthConnect), their sync state and the experimental
     // scoring switch (default off).
@@ -306,36 +306,6 @@ fun DataSourcesScreen(vm: AppViewModel) {
     val hcBandScoring by vm.hcBandScoring.collectAsStateWithLifecycle()
     var hcBandSyncing by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { hcBands = runCatching { vm.healthConnectBands() }.getOrDefault(emptyList()) }
-    var hcInspectResult by remember { mutableStateOf<List<HealthConnectInspector.SourceSummary>?>(null) }
-    fun runHcInspect() {
-        hcInspectResult = null
-        showHcInspect = true
-        scope.launch {
-            val result = HealthConnectInspector.inspect(context)
-            if (result == null) {
-                showHcInspect = false
-                Toast.makeText(context, uiString(R.string.hc_inspect_failed), Toast.LENGTH_LONG).show()
-            } else {
-                hcInspectResult = result
-            }
-        }
-    }
-    val hcInspectPermissionLauncher = rememberLauncherForActivityResult(
-        PermissionController.createRequestPermissionResultContract(),
-    ) { granted ->
-        if (granted.any { it in HealthConnectImporter.PERMISSIONS }) runHcInspect()
-        else Toast.makeText(context, "Health Connect access not granted.", Toast.LENGTH_LONG).show()
-    }
-    fun startHcInspect() {
-        scope.launch {
-            val granted = runCatching {
-                HealthConnectImporter.client(context).permissionController.getGrantedPermissions()
-            }.getOrDefault(emptySet())
-            if (granted.any { it in HealthConnectImporter.PERMISSIONS }) runHcInspect()
-            else hcInspectPermissionLauncher.launch(HealthConnectImporter.PERMISSIONS)
-        }
-    }
-
     val healthConnectAvailable = remember {
         HealthConnectImporter.sdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
     }
@@ -538,7 +508,7 @@ fun DataSourcesScreen(vm: AppViewModel) {
                     icon = Icons.Filled.Search,
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
-                ) { startHcInspect() }
+                ) { showHcInspect = true }
                 if (hcBands.isNotEmpty()) {
                     Text(uiString(R.string.hc_band_section), style = NoopType.subhead, color = Palette.textPrimary)
                     hcBands.forEach { band ->
@@ -977,22 +947,10 @@ fun DataSourcesScreen(vm: AppViewModel) {
     }
 
     if (showHcInspect) {
-        HealthConnectInspectorDialog(
-            result = hcInspectResult,
-            onDismiss = { showHcInspect = false },
-            addedPackages = hcBands.mapNotNull { HealthConnectBand.packageOf(it) }.toSet(),
-            onAdd = { summary ->
-                scope.launch {
-                    val r = vm.addHealthConnectBand(summary)
-                    hcBands = runCatching { vm.healthConnectBands() }.getOrDefault(hcBands)
-                    Toast.makeText(
-                        context,
-                        uiString(R.string.hc_band_added_toast, HealthConnectInspector.appName(summary.packageName),
-                            r?.hrRows ?: 0, r?.nights ?: 0),
-                        Toast.LENGTH_LONG,
-                    ).show()
-                }
-            },
+        HealthConnectBandFlow(
+            vm = vm,
+            onClose = { showHcInspect = false },
+            onAdded = { scope.launch { hcBands = runCatching { vm.healthConnectBands() }.getOrDefault(hcBands) } },
         )
     }
 

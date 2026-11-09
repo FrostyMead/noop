@@ -13,20 +13,88 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.noop.R
+import androidx.health.connect.client.PermissionController
+import com.noop.ingest.HealthConnectBand
+import com.noop.ingest.HealthConnectImporter
 import com.noop.ingest.HealthConnectInspector
+import kotlinx.coroutines.launch
+
+/**
+ * The whole "add a band through Health Connect" flow, shared by Data Sources and the Add Device wizard:
+ * ask for Health Connect access if needed, read what each app sends, show it, and register the app the user
+ * picks as a band (then sync it). Compose it while it should run; [onClose] when the dialog is dismissed,
+ * [onAdded] after a band is registered.
+ */
+@Composable
+internal fun HealthConnectBandFlow(vm: AppViewModel, onClose: () -> Unit, onAdded: () -> Unit = {}) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var result by remember { mutableStateOf<List<HealthConnectInspector.SourceSummary>?>(null) }
+    var added by remember { mutableStateOf<Set<String>>(emptySet()) }
+    fun inspect() {
+        scope.launch {
+            added = runCatching { vm.healthConnectBands() }.getOrDefault(emptyList())
+                .mapNotNull { HealthConnectBand.packageOf(it) }.toSet()
+            val found = HealthConnectInspector.inspect(context)
+            if (found == null) {
+                Toast.makeText(context, uiString(R.string.hc_inspect_failed), Toast.LENGTH_LONG).show()
+                onClose()
+            } else {
+                result = found
+            }
+        }
+    }
+    val permissions = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { granted ->
+        if (granted.any { it in HealthConnectImporter.PERMISSIONS }) inspect()
+        else onClose()
+    }
+    LaunchedEffect(Unit) {
+        val granted = runCatching { HealthConnectImporter.client(context).permissionController.getGrantedPermissions() }
+            .getOrDefault(emptySet())
+        if (granted.any { it in HealthConnectImporter.PERMISSIONS }) inspect()
+        else permissions.launch(HealthConnectImporter.PERMISSIONS)
+    }
+    HealthConnectInspectorDialog(
+        result = result,
+        onDismiss = onClose,
+        addedPackages = added,
+        onAdd = { summary ->
+            scope.launch {
+                val r = vm.addHealthConnectBand(summary)
+                added = added + summary.packageName
+                Toast.makeText(
+                    context,
+                    uiString(R.string.hc_band_added_toast, HealthConnectInspector.appName(summary.packageName),
+                        r?.hrRows ?: 0, r?.nights ?: 0),
+                    Toast.LENGTH_LONG,
+                ).show()
+                onAdded()
+            }
+        },
+    )
+}
 
 /**
  * The result of [HealthConnectInspector.inspect]: one card per app that wrote to Health Connect in the

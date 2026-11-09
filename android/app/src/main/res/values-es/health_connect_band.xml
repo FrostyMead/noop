@@ -30,4 +30,6 @@
     <string name="hc_band_scoring">Puntuar días con mi pulsera</string>
     <string name="hc_band_scoring_detail">Experimental. Usa la frecuencia cardiaca y el sueño de la pulsera para Esfuerzo y Sueño en días sin correa. Déjalo apagado hasta comprobarlo con tus noches.</string>
     <string name="hc_band_added_toast">%1$s añadido: %2$d lecturas de frecuencia cardiaca y %3$d noches hasta ahora.</string>
+    <string name="hc_band_wizard_title">Cualquier pulsera o reloj</string>
+    <string name="hc_band_wizard_detail">Garmin, Amazfit, Xiaomi, Samsung, Fitbit y más, con los datos de Health Connect de su app</string>
 </resources>

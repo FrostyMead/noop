@@ -30,4 +30,6 @@
     <string name="hc_band_scoring">用我的手环为日期评分</string>
     <string name="hc_band_scoring_detail">实验功能。在没有绑带数据的日子里，用手环的心率和睡眠计算消耗和睡眠。在你的夜间数据上验证之前请保持关闭。</string>
     <string name="hc_band_added_toast">已添加 %1$s：目前 %2$d 条心率读数和 %3$d 晚睡眠。</string>
+    <string name="hc_band_wizard_title">任意手环或手表</string>
+    <string name="hc_band_wizard_detail">Garmin、Amazfit、小米、三星、Fitbit 等，通过其应用的 Health Connect 数据</string>
 </resources>

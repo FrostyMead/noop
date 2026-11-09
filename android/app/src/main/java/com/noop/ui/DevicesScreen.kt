@@ -145,6 +145,7 @@ fun DevicesScreen(
 
     // Sheets / dialogs (mirror the Swift @State targets).
     var showAddWizard by remember { mutableStateOf(false) }
+    var showHcBandFlow by remember { mutableStateOf(false) }
     var switchTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
     var strapCompare by remember { mutableStateOf<StrapCompareData?>(null) }
     var renameTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
@@ -359,7 +360,11 @@ fun DevicesScreen(
             // The Oura gate's file-import links close the wizard and route to Data Sources, so the
             // non-destructive lane is always one tap away (it is never the only door).
             onUseFileImport = { showAddWizard = false; reload(); onUseFileImport() },
+            onAddViaHealthConnect = { showAddWizard = false; showHcBandFlow = true },
         )
+    }
+    if (showHcBandFlow) {
+        HealthConnectBandFlow(viewModel, onClose = { showHcBandFlow = false; reload() }, onAdded = { reload() })
     }
 
     // --- Switch confirm ---

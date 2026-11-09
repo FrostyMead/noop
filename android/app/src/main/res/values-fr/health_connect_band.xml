@@ -30,4 +30,6 @@
     <string name="hc_band_scoring">Noter les jours avec mon bracelet</string>
     <string name="hc_band_scoring_detail">Expérimental. Utilise la fréquence cardiaque et le sommeil du bracelet pour l\'Effort et le Sommeil les jours sans sangle. À laisser désactivé tant que ce n\'est pas vérifié sur tes nuits.</string>
     <string name="hc_band_added_toast">%1$s ajouté : %2$d mesures de fréquence cardiaque et %3$d nuits pour l\'instant.</string>
+    <string name="hc_band_wizard_title">N\'importe quel bracelet ou montre</string>
+    <string name="hc_band_wizard_detail">Garmin, Amazfit, Xiaomi, Samsung, Fitbit et plus, via les données Health Connect de son app</string>
 </resources>
