@@ -116,6 +116,13 @@ object CardAppearance {
     }
 }
 
+/** The light theme's card lift: a soft, wide shadow at low alpha. Dark cards are flat. */
+internal object CardShadow {
+    val elevation = 6.dp
+    val ambient = Color.Black.copy(alpha = 0.05f)
+    val spot = Color.Black.copy(alpha = 0.10f)
+}
+
 fun Modifier.frostedCardSurface(
     tint: Color? = null,
     cornerRadius: Dp = Metrics.cardRadius,
@@ -126,24 +133,34 @@ fun Modifier.frostedCardSurface(
     // live-preview. Content drawn above the surface is unaffected, so numbers/labels stay readable.
     val op = CardAppearance.opacity
     this
-        // Elevation idiom: DARK is flat (the hairline + hue carry the edge). LIGHT raises the white card
-        // off the warm-paper canvas with a soft drop shadow — the hairline alone is too faint on paper.
+        // Elevation idiom: DARK is flat — the card's own tone carries the edge against the near-black
+        // canvas. LIGHT lifts the white card off the cool canvas with a soft, diffuse shadow (low-alpha
+        // ambient + spot, so it reads as depth rather than a grey outline).
         .then(
             if (Palette.isLight)
-                Modifier.shadow(elevation = (8f * op).dp, shape = RoundedCornerShape(cornerRadius), clip = false)
+                Modifier.shadow(
+                    elevation = (CardShadow.elevation.value * op).dp,
+                    shape = RoundedCornerShape(cornerRadius),
+                    clip = false,
+                    ambientColor = CardShadow.ambient,
+                    spotColor = CardShadow.spot,
+                )
             else Modifier
         )
         .drawBehind {
             val radiusPx = cornerRadius.toPx()
             val corner = androidx.compose.ui.geometry.CornerRadius(radiusPx, radiusPx)
             val fill = Palette.surfaceRaised.copy(alpha = Palette.surfaceRaised.alpha * op)
+            // Opaque cards are borderless; a hairline returns only when the user makes cards translucent
+            // over a backdrop, where the fill alone no longer separates card from background.
             val border = Palette.hairline.copy(alpha = Palette.hairline.alpha * op)
+            val drawBorder = op < 0.999f
 
             if (tint == null) {
                 // NEUTRAL card (iOS FrostedCardSurface tint == nil): a FLAT raised surface — no vertical
                 // bevel gradient, no accent wash, and a PLAIN hairline border (no accent bias).
                 drawRoundRect(color = fill, cornerRadius = corner)
-                drawRoundRect(color = border, cornerRadius = corner, style = Stroke(width = 1.dp.toPx()))
+                if (drawBorder) drawRoundRect(color = border, cornerRadius = corner, style = Stroke(width = 1.dp.toPx()))
             } else {
                 // TINTED card (iOS parity, 2026-06-23 "synthesis has the old blue style"): a FLAT raised
                 // surface — the SAME WHOOP grey as the neutral card, NO navy bevel gradient — carrying only
@@ -164,7 +181,7 @@ fun Modifier.frostedCardSurface(
                     cornerRadius = corner,
                 )
                 // 3) Plain 1px hairline (no accent bias) — matches the neutral card.
-                drawRoundRect(color = border, cornerRadius = corner, style = Stroke(width = 1.dp.toPx()))
+                if (drawBorder) drawRoundRect(color = border, cornerRadius = corner, style = Stroke(width = 1.dp.toPx()))
             }
         }
 }
@@ -248,12 +265,12 @@ fun SyncingHistoryNote(chunks: Int, modifier: Modifier = Modifier) {
     }
 }
 
-// MARK: - Overline label (ALL-CAPS, semibold, +0.8 tracking, secondary)
+// MARK: - Overline label (sentence case, semibold, secondary)
 
 @Composable
 fun Overline(text: String, modifier: Modifier = Modifier, color: Color = Palette.textSecondary) {
     Text(
-        text = text.uppercase(),
+        text = text,
         style = NoopType.overline,
         color = color,
         modifier = modifier,
@@ -265,12 +282,9 @@ fun Overline(text: String, modifier: Modifier = Modifier, color: Color = Palette
 /**
  * A section's header: its name, an optional qualifier, and an optional trailing note.
  *
- * The name leads, in bold uppercase on ONE line with the trailing note beside it, and the qualifier —
- * when there is one — sits quietly beneath. Previously the order was inverted: an uppercase [overline]
- * sat ABOVE a 22sp title, so every section spent three type sizes and two lines introducing itself, and
- * the first thing the eye met was the least specific word on the card ("Metrics", "Weekly", "Recovery")
- * rather than the section's actual name. A screen with eight sections paid that eight times, which is
- * most of why the app read as busier than it is.
+ * The name leads as a sentence-case [NoopType.title3] on ONE line with the trailing note beside it, and
+ * the qualifier — when there is one — sits quietly beneath, so the section's actual name is the first
+ * thing the eye meets.
  *
  * Nothing is dropped — the qualifier still renders, demoted rather than deleted, because on some cards
  * it carries real context ("From your nightly readings") even where on others it is only a category word.
@@ -292,8 +306,8 @@ fun SectionHeader(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = title.uppercase(),
-                style = NoopType.sectionTitle,
+                text = title,
+                style = NoopType.title3,
                 color = Palette.textPrimary,
                 modifier = Modifier.weight(1f),
             )
@@ -646,21 +660,21 @@ fun <T> SegmentedPillControl(
             .height(36.dp)
             .clip(outerShape)
             .background(Palette.surfaceInset)
-            .border(1.dp, Palette.hairline, outerShape)
-            .padding(4.dp),
+            .padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         items.forEach { item ->
             val selected = item == selection
             val itemEnabled = enabled(item)
-            // Selected segment is SELECTION CHROME → follows the accent: a gold gradient + gold-deep ink
-            // on dark; a flat blue accent + white ink on light (so light selection matches the blue
-            // chrome, not gold). Unselected stays clear with tertiary text; disabled dims further.
+            // Selected segment is neutral chrome: a raised thumb on the recessed track (a white thumb with a
+            // soft lift on light, a lighter grey on dark), with primary ink. Colour stays reserved for data.
             val pillShape = RoundedCornerShape(50)
             val pillBg = if (selected) {
-                if (Palette.isLight) Modifier.background(Palette.accent, pillShape)
-                else Modifier.background(Brush.linearGradient(*Palette.goldGradient.toTypedArray()), pillShape)
+                if (Palette.isLight) Modifier
+                    .shadow(2.dp, pillShape, clip = false, ambientColor = CardShadow.ambient, spotColor = CardShadow.spot)
+                    .background(Palette.surfaceRaised, pillShape)
+                else Modifier.background(Palette.hairlineStrong, pillShape)
             } else {
                 Modifier
             }
@@ -677,14 +691,14 @@ fun <T> SegmentedPillControl(
             ) {
                 Text(
                     text = label(item),
-                    style = NoopType.captionNumber,
+                    style = if (selected) NoopType.captionNumber.copy(fontWeight = FontWeight.SemiBold)
+                        else NoopType.captionNumber,
                     maxLines = if (adaptsToAvailableWidth) 1 else Int.MAX_VALUE,
                     overflow = if (adaptsToAvailableWidth) TextOverflow.Ellipsis else TextOverflow.Clip,
                     color = when {
-                        selected && Palette.isLight -> androidx.compose.ui.graphics.Color.White
-                        selected -> Palette.goldDeepText
+                        selected -> Palette.textPrimary
                         !itemEnabled -> Palette.textTertiary.copy(alpha = 0.45f)
-                        else -> Palette.textTertiary
+                        else -> Palette.textSecondary
                     },
                 )
             }

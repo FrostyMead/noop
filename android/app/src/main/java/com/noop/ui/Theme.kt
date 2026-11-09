@@ -23,15 +23,17 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import com.noop.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 // MARK: - Palette (mirrors StrandDesign/Palette.swift)
 //
-// A neutral CHARCOAL canvas carrying per-domain accent "colour worlds": Charge/recovery = green,
-// Effort/strain = amber, Rest/sleep = blue, Stress = amber. The governing rule is that COLOUR BELONGS
+// A neutral canvas carrying per-domain accent "colour worlds": Charge/recovery = green,
+// Effort/strain = coral, Rest/sleep = violet, Stress = amber. The governing rule is that COLOUR BELONGS
 // TO DATA — chrome (nav, chips, controls, surfaces) stays in the grey family, so the only saturated
 // things on a screen are the scores themselves.
 //
@@ -418,9 +420,9 @@ object Metrics {
     //   cornerXs   8dp   badges, swatches, micro-chips
     //   cornerSm  12dp   inline controls, segmented pills, list rows
     //   cornerMd  16dp   inner panels, nested blocks, tiles inside a card
-    //   cardRadius 24dp  cards, sheets, dialogs — the top-level container radius
+    //   cardRadius 20dp  cards, sheets, dialogs — the top-level container radius
     //   cornerPill 50dp  fully rounded (capsules, discs)
-    val cardRadius = 24.dp
+    val cardRadius = 20.dp
     val cornerXs = 8.dp
     val cornerSm = 12.dp
     val cornerMd = 16.dp
@@ -450,6 +452,7 @@ object Metrics {
                                  // shrinks to fit, #332) keeps enough room to stay legible at full size
     val sparkWidth = 58.dp
     val sparkHeight = 22.dp
+    val tileTrendHeightDetailed = 40.dp   // a detailed Key Metrics tile's taller trend line
     val stageStripHeight = 34.dp
     val motionStripHeight = 40.dp   // #407 — the subordinate movement/restlessness trace under the hypnogram
     // iOS #988 port — WHOOP-style per-stage sleep timeline rows (design 2026-07-10).
@@ -482,19 +485,51 @@ object Metrics {
     val editorListMaxHeight = 390.dp
 }
 
+/** Geometry of the daily overview, shared by its cards, header and navigation. */
+object TodayStyle {
+    val cardRadius = Metrics.cardRadius
+    val flatElevation = 0.dp
+    /** Upper bound for a score ring; a narrow phone shrinks it to fit three across. */
+    val scoreDiameter = 84.dp
+    val scoreStroke = 6.dp
+    /** Fraction of a domain colour used behind its icon disc. */
+    const val iconDiscAlpha = 0.14f
+    val iconDisc = 36.dp
+    val eyebrowIcon = 14.dp
+    /** Height of the hairline that separates the three score rings. */
+    val ringDivider = 48.dp
+    /** The rounded-square mark that leads an activity row. */
+    val activityIcon = 36.dp
+    val headerControl = 40.dp
+    val chipHeight = 32.dp
+    val stageBarHeight = 10.dp
+    val legendDot = 8.dp
+    val statusDot = 6.dp
+    /** Extra air above a titled section, so its heading groups with the cards below it. */
+    val sectionLead = 12.dp
+    /** Opacity of the recessed fill behind a chip that sits inside a card. */
+    const val insetAlpha = 0.6f
+    val touchTarget = 48.dp
+}
+
 // MARK: - Typography (ported from StrandDesign/Typography.swift §9.2)
 //
-// Helvetica Neue on Apple; on Android we use a Helvetica-Neue FontFamily where one
-// is bundled in res/font, else FontFamily.SansSerif as the documented substitute
-// (no Helvetica asset is bundled, so the platform grotesque stands in) with the same
-// sizes/weights. Numeric/live styles stay in the house sans and request TABULAR
-// figures via fontFeatureSettings = "tnum" (mirroring iOS .monospacedDigit()) so live
+// Helvetica Neue on Apple; on Android the bundled Inter family, at the same sizes/weights
+// (typeface is pixel-level, which the parity contract leaves to each platform). Numeric/live
+// styles stay in the house sans and request TABULAR figures via fontFeatureSettings = "tnum" (mirroring iOS .monospacedDigit()) so live
 // values don't reflow; Monospace is reserved for the `mono` raw/log style only.
 
 object NoopType {
-    // Helvetica Neue family — falls back to the platform grotesque (SansSerif) when
-    // no res/font/helvetica_neue asset is bundled, per the v3 type spec.
-    private val sans = FontFamily.SansSerif
+    // Inter (SIL OFL 1.1, bundled in res/font; licence in assets/licenses/Inter-OFL.txt). A neo-grotesque
+    // drawn for screens, with tabular figures, so numbers line up and read crisply at every size. Bundled
+    // rather than downloaded: the app makes no network requests. Glyphs Inter lacks (CJK) fall back to the
+    // system font automatically.
+    private val sans = FontFamily(
+        Font(R.font.inter_regular, FontWeight.Normal),
+        Font(R.font.inter_medium, FontWeight.Medium),
+        Font(R.font.inter_semibold, FontWeight.SemiBold),
+        Font(R.font.inter_bold, FontWeight.Bold),
+    )
     private val monoFamily = FontFamily.Monospace
 
     /** Display 64–80 / Bold — the recovery ring number. Tight tracking (≈ -0.04em),
@@ -508,31 +543,29 @@ object NoopType {
      *  display(); exposed to mirror StrandFont.displayTracking. */
     fun displayTracking(size: Float = 72f): Float = -size * 0.04f
 
-    val title1 = TextStyle(fontFamily = sans, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-    val title2 = TextStyle(fontFamily = sans, fontWeight = FontWeight.SemiBold, fontSize = 22.sp)
+    /** The screen's own name ("Today") — the largest text that is not a number. */
+    val largeTitle = TextStyle(fontFamily = sans, fontWeight = FontWeight.SemiBold, fontSize = 30.sp, letterSpacing = (-0.6).sp)
+    val title1 = TextStyle(fontFamily = sans, fontWeight = FontWeight.Bold, fontSize = 28.sp, letterSpacing = (-0.4).sp)
+    val title2 = TextStyle(fontFamily = sans, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, letterSpacing = (-0.2).sp)
+    /** A section's name above its cards: quiet weight, so the numbers below stay the loudest thing. */
+    val title3 = TextStyle(fontFamily = sans, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, letterSpacing = (-0.2).sp)
+    /** The small muted label that opens a card ("Health monitor", "Sleep"), set beside its glyph. */
+    val eyebrow = TextStyle(fontFamily = sans, fontWeight = FontWeight.Medium, fontSize = 13.sp)
     val headline = TextStyle(fontFamily = sans, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
     val body = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 15.sp)
     val subhead = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 13.sp)
     val caption = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 12.sp)
     val footnote = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 11.sp)
 
-    /** Overline 11 / Bold, +1.4 tracking, ALL-CAPS at use site. */
+    /** Overline 12 / SemiBold — the label on a value inside a card. Sentence case: a calm label reads
+     *  faster than tracked capitals, and leaves the number as the loudest thing on the card. */
     val overline = TextStyle(
-        fontFamily = sans, fontWeight = FontWeight.Bold, fontSize = 11.sp,
-        letterSpacing = 1.4.sp,
+        fontFamily = sans, fontWeight = FontWeight.SemiBold, fontSize = 12.sp,
+        letterSpacing = 0.1.sp,
     )
 
-    /**
-     * A section's own name — bold, uppercase, lightly tracked.
-     *
-     * Bigger than [overline] (which labels a value inside a card) because this labels the section
-     * itself, and smaller than [title2] because a screen of eight sections should not carry eight
-     * 22sp headlines competing with the numbers they introduce.
-     */
-    val sectionTitle = TextStyle(
-        fontFamily = sans, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-        letterSpacing = 1.2.sp,
-    )
+    /** A section's own name; an alias of [title3] kept for existing callers. */
+    val sectionTitle = title3
 
     /** Mono 13 — raw / log views. */
     val mono = TextStyle(fontFamily = monoFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp)
@@ -552,10 +585,14 @@ object NoopType {
     val metricInline = number(15f)
     val chartValue = number(18f)
     val chartValueLarge = number(22f)
-    val tileValue = number(24f)
-    val tileValueLarge = number(26f)
+    val tileValue = number(24f, FontWeight.SemiBold)
+    val tileValueLarge = number(28f, FontWeight.Medium).copy(letterSpacing = (-0.5).sp)
+    /** The number inside a Today score ring. */
+    val ringValue = number(22f, FontWeight.Medium).copy(letterSpacing = (-0.4).sp)
+    /** The small unit set beside a ring's number ("%"). */
+    val ringUnit = number(12f, FontWeight.Medium)
 
-    const val overlineTracking = 1.4f
+    const val overlineTracking = 0.1f
 }
 
 // MARK: - Material3 bridge
@@ -626,7 +663,7 @@ fun NoopTheme(content: @Composable () -> Unit) {
     val tokens = if (dark) DarkTokens else LightTokens
     if (Palette.active !== tokens) Palette.active = tokens
 
-    // Status-/nav-bar icon appearance: light icons on the dark theme, dark icons on the warm-paper
+    // Status-/nav-bar icon appearance: light icons on the dark theme, dark icons on the
     // light theme (otherwise the icons are invisible). Edge-to-edge keeps the bars transparent.
     val view = LocalView.current
     if (!view.isInEditMode) {

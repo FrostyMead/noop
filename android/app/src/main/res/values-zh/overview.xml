@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="overview_recovery">恢复</string>
+    <string name="overview_sleep">睡眠</string>
+    <string name="overview_percent">%1$d%%</string>
+    <string name="overview_out_of">满分 %1$d</string>
+    <string name="overview_sleep_score">睡眠评分</string>
+    <string name="overview_sleep_pending">需要记录一晚睡眠</string>
+    <string name="overview_score_source">评分来源：%1$s</string>
+    <string name="overview_daily_insight">今日概览</string>
+    <string name="overview_health_monitor">健康监测</string>
+    <string name="overview_monitor_empty">等待夜间测量数据</string>
+    <string name="overview_monitor_partial">部分测量数据不可用</string>
+    <string name="overview_monitor_outside">部分读数超出参考范围</string>
+    <string name="overview_monitor_personal">全部 3 项读数均在您的通常范围内</string>
+    <string name="overview_monitor_typical">全部 3 项读数均在参考范围内</string>
+    <string name="overview_in_personal">在您的通常范围内</string>
+    <string name="overview_out_personal">超出您的通常范围</string>
+    <string name="overview_in_typical">在典型范围内</string>
+    <string name="overview_out_typical">超出典型范围</string>
+    <string name="overview_expanded">已展开</string>
+    <string name="overview_collapsed">已收起</string>
+    <string name="overview_sleep_summary">睡眠概览</string>
+    <string name="overview_sleep_duration">%1$d 小时 %2$d 分钟</string>
+    <string name="overview_sleep_deep">深睡</string>
+    <string name="overview_sleep_rem">REM</string>
+    <string name="overview_sleep_light">浅睡</string>
+    <string name="overview_sleep_details">点按查看睡眠详情</string>
+    <string name="overview_stage_minutes">%1$s · %2$d 分钟</string>
+    <string name="overview_connected">手环已连接</string>
+    <string name="overview_disconnected">手环已断开</string>
+    <string name="overview_minutes">%1$d 分钟</string>
+    <string name="overview_insight_label">洞察</string>
+</resources>

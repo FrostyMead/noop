@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="overview_recovery">Recuperación</string>
+    <string name="overview_sleep">Sueño</string>
+    <string name="overview_percent">%1$d%%</string>
+    <string name="overview_out_of">De %1$d</string>
+    <string name="overview_sleep_score">Puntuación de sueño</string>
+    <string name="overview_sleep_pending">Requiere una noche registrada</string>
+    <string name="overview_score_source">Puntuaciones de %1$s</string>
+    <string name="overview_daily_insight">Tu día de un vistazo</string>
+    <string name="overview_health_monitor">Monitor de salud</string>
+    <string name="overview_monitor_empty">Esperando lecturas nocturnas</string>
+    <string name="overview_monitor_partial">Algunas lecturas no están disponibles</string>
+    <string name="overview_monitor_outside">Lecturas fuera de su rango de referencia</string>
+    <string name="overview_monitor_personal">Las 3 lecturas dentro de tu rango habitual</string>
+    <string name="overview_monitor_typical">Las 3 lecturas dentro de los rangos de referencia</string>
+    <string name="overview_in_personal">Dentro de tu rango habitual</string>
+    <string name="overview_out_personal">Fuera de tu rango habitual</string>
+    <string name="overview_in_typical">Dentro del rango típico</string>
+    <string name="overview_out_typical">Fuera del rango típico</string>
+    <string name="overview_expanded">Expandido</string>
+    <string name="overview_collapsed">Contraído</string>
+    <string name="overview_sleep_summary">Resumen del sueño</string>
+    <string name="overview_sleep_duration">%1$d h %2$d min</string>
+    <string name="overview_sleep_deep">Profundo</string>
+    <string name="overview_sleep_rem">REM</string>
+    <string name="overview_sleep_light">Ligero</string>
+    <string name="overview_sleep_details">Toca para ver los detalles del sueño</string>
+    <string name="overview_stage_minutes">%1$s · %2$d min</string>
+    <string name="overview_connected">Pulsera conectada</string>
+    <string name="overview_disconnected">Pulsera desconectada</string>
+    <string name="overview_minutes">%1$d min</string>
+    <string name="overview_insight_label">Resumen</string>
+</resources>

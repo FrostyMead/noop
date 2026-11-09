@@ -66,6 +66,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.ui.window.Dialog
@@ -303,11 +304,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
         Scaffold(
             containerColor = Palette.surfaceBase,
             bottomBar = {
-                // Four navigation tabs in one neutral capsule, plus a separate round quick-action disc—
-                // the same visual balance as the supplied WHOOP reference.
-                GlassBottomBar(
+                // Native Android navigation, with quick actions in the Today header.
+                OverviewBottomBar(
                     current = current,
-                    onQuickActions = { showQuickActions = true },
                     onTabSelected = { dest ->
                         if (dest.route != currentRoute) nav.navigateTopLevel(dest.route)
                     },
@@ -332,6 +331,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.Today.route) {
                     TodayScreen(
                         viewModel = viewModel,
+                        onQuickActions = { showQuickActions = true },
                         customizeRequested = requestTodayCustomization,
                         onCustomizeRequestHandled = { requestTodayCustomization = false },
                         // The Updates "ringer" — the bell sits before the +, and opens the inbox
@@ -803,153 +803,41 @@ private val barTrailingTabs = listOf(
 )
 
 @Composable
-private fun GlassBottomBar(
-    current: Destination,
-    onQuickActions: () -> Unit,
-    onTabSelected: (Destination) -> Unit,
-) {
-    val barShape = RoundedCornerShape(50)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            // Clear the gesture-nav bar (home indicator) first, then add breathing room so the capsule
-            // floats free of the bottom edge rather than jamming against it — iOS clears the home-indicator
-            // safe area + 4pt; navigationBarsPadding plus a compact bottom inset gives the same lift.
-            .navigationBarsPadding()
-            .padding(horizontal = Metrics.space12)
-            .padding(top = Metrics.space4, bottom = Metrics.space10),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 560.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
+private fun OverviewBottomBar(current: Destination, onTabSelected: (Destination) -> Unit) {
+    // The bar sits on the canvas itself, separated from the scrolling cards by one hairline: navigation is
+    // chrome, so it carries no surface of its own and no colour (selection is shown by weight and contrast).
+    Column {
+        androidx.compose.material3.HorizontalDivider(color = Palette.hairline)
+        androidx.compose.material3.NavigationBar(
+            containerColor = Palette.surfaceBase,
+            tonalElevation = TodayStyle.flatElevation,
         ) {
-            Surface(
-                shape = barShape,
-                color = Palette.surfaceRaised.copy(alpha = if (Palette.isLight) 0.96f else 0.94f),
-                tonalElevation = 4.dp,
-                shadowElevation = 10.dp,
-                modifier = Modifier
-                    .weight(1f)
-                    .border(1.dp, Palette.hairline.copy(alpha = 0.72f), barShape),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Metrics.space4, vertical = Metrics.space6),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(1.dp),
-                ) {
-                    barLeadingTabs.forEach { tab ->
-                        BarSlot(
-                            icon = tab.icon,
-                            label = stringResource(tab.labelRes),
-                            active = current == tab.dest,
-                            modifier = Modifier.weight(1f),
-                            onClick = { onTabSelected(tab.dest) },
-                        )
-                    }
-                    barTrailingTabs.forEach { tab ->
-                        BarSlot(
-                            icon = tab.icon,
-                            label = stringResource(tab.labelRes),
-                            active = current == tab.dest,
-                            modifier = Modifier.weight(1f),
-                            onClick = { onTabSelected(tab.dest) },
-                        )
-                    }
-                    BarSlot(
-                        icon = Icons.Filled.MoreHoriz,
-                        label = stringResource(R.string.nav_more),
-                        active = current != Destination.Today && current != Destination.Trends &&
-                            current != Destination.Sleep,
-                        modifier = Modifier.weight(1f),
-                        onClick = { onTabSelected(Destination.More) },
-                    )
-                }
+            val colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+                selectedIconColor = Palette.textPrimary, selectedTextColor = Palette.textPrimary,
+                unselectedIconColor = Palette.textTertiary, unselectedTextColor = Palette.textTertiary,
+                indicatorColor = Palette.surfaceInset,
+            )
+            @Composable
+            fun label(text: String, selected: Boolean) = Text(
+                text,
+                style = NoopType.caption.copy(fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium),
+            )
+            (barLeadingTabs + barTrailingTabs).forEach { tab ->
+                val selected = current == tab.dest
+                NavigationBarItem(
+                    selected = selected, onClick = { onTabSelected(tab.dest) },
+                    icon = { Icon(tab.icon, contentDescription = null) },
+                    label = { label(stringResource(tab.labelRes), selected) }, colors = colors,
+                )
             }
-
-            Surface(
-                shape = CircleShape,
-                color = Palette.surfaceRaised.copy(alpha = if (Palette.isLight) 0.96f else 0.94f),
-                tonalElevation = 4.dp,
-                shadowElevation = 10.dp,
-                modifier = Modifier
-                    .size(66.dp)
-                    .border(1.dp, Palette.accent.copy(alpha = 0.30f), CircleShape)
-                    .clip(CircleShape)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onQuickActions,
-                    )
-                    .semantics { contentDescription = uiString(R.string.a11y_quick_actions) },
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Filled.Add,
-                        contentDescription = null,
-                        tint = Palette.accent,
-                        modifier = Modifier.size(26.dp),
-                    )
-                }
-            }
+            val moreSelected = current != Destination.Today && current != Destination.Trends && current != Destination.Sleep
+            NavigationBarItem(
+                selected = moreSelected,
+                onClick = { onTabSelected(Destination.More) },
+                icon = { Icon(Icons.Filled.MoreHoriz, contentDescription = null) },
+                label = { label(stringResource(R.string.nav_more), moreSelected) }, colors = colors,
+            )
         }
-    }
-}
-
-/** One nav slot: an icon over a small label. The active destination sits in a soft rounded capsule,
- *  giving the floating island a clear selected state without adding a glow or visual noise.
- *
- *  The selected state is NEUTRAL — full-strength primary text on a raised grey capsule — not the mint
- *  chrome accent it used to be. The bar sits directly under the Today hero, so an accent-green tab put a
- *  second, slightly-different green (accent #69DDB8) a few dp from the Charge ring's data green
- *  (#03E095): two saturated greens competing, neither reading as meaningful. The palette's rule is that
- *  colour belongs to data, and navigation is chrome. Contrast still carries selection (primary vs
- *  secondary text, filled vs empty capsule), so nothing is lost for accessibility. The quick-action disc
- *  beside the bar deliberately KEEPS the accent: one intentional spot of brand colour, like the coach orb
- *  in the WHOOP bar, reads as an anchor rather than noise. */
-@Composable
-private fun BarSlot(
-    icon: ImageVector,
-    label: String,
-    active: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    val tint = if (active) Palette.textPrimary else Palette.textSecondary
-    val slotShape = RoundedCornerShape(Metrics.cornerMd)
-    Column(
-        modifier = modifier
-            .clip(slotShape)
-            .background(if (active) Palette.surfaceInset else Color.Transparent, slotShape)
-            .border(
-                width = if (active) 1.dp else 0.dp,
-                color = if (active) Palette.hairlineStrong else Color.Transparent,
-                shape = slotShape,
-            )
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(vertical = Metrics.space6)
-            .semantics { contentDescription = label },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(3.dp),
-    ) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(Metrics.iconSmall))
-        Text(
-            label,
-            style = NoopType.footnote.copy(
-                fontSize = 10.sp,
-                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
-            ),
-            color = tint,
-        )
     }
 }
 

@@ -14,8 +14,9 @@ import androidx.compose.ui.graphics.Color
 // is snapshot state, so every `Palette.X` read (in a composable OR a Canvas DrawScope) re-resolves
 // automatically when the theme flips — ZERO call-site changes across the ~1,740 references.
 //
-// Dark values mirror StrandPalette.swift's dark; light values are the approved "Warm Paper" set
-// (docs/superpowers/specs/2026-06-16-light-theme-design.md). Names/order match the Swift palette.
+// Both schemes are the Android "clean overview" set: a cool neutral canvas, borderless cards, and three
+// single-hue score families (Charge green, Effort coral, Rest violet). Token NAMES/order still match the
+// Swift palette; values are pixel-level, which the parity contract leaves to each platform.
 
 data class PaletteTokens(
     val surfaceBase: Color,
@@ -97,7 +98,7 @@ data class PaletteTokens(
     val heroFill: Color,
     val heroBorder: Color,
     // The liquid VESSEL's own materials (LiquidRender). These were four hardcoded near-black literals
-    // inside the renderer, ported as-is from the Swift original, so on the warm-paper LIGHT theme every
+    // inside the renderer, ported as-is from the Swift original, so on the LIGHT theme every
     // hero score rendered as a charcoal disc on cream. Tokenised here so the vessel is a dark well on the
     // dark canvas and a pale glass bowl on paper, and so the renderer holds no raw colour of its own.
     // [vesselWell] is the empty (unfilled) body, [vesselTrack] its opaque twin for the horizontal tube,
@@ -108,19 +109,16 @@ data class PaletteTokens(
     val vesselHighlight: Color,
 )
 
-// WHOOP-reset dark palette (gold killed 2026-06-22). Values match StrandPalette.swift's DARK
-// Titanium column byte-for-byte: blue-grey canvas, WHOOP red→yellow→green recovery, green Charge,
-// blue Effort, slate Rest, amber Stress. NO gold anywhere — the legacy `gold*` tokens hold WHOOP blue,
-// and `accent` is mint (see below), not blue as an earlier revision of this line claimed.
+// Dark scheme. NO gold anywhere — the legacy `gold*` tokens hold blue, and `accent` is mint (see below).
 val DarkTokens = PaletteTokens(
-    // Neutral WHOOP-like charcoal hierarchy: colour belongs to data, not the screen chrome. The four
-    // surfaces are an ELEVATION LADDER and must stay monotonically lighter in that order — base (canvas)
-    // < raised (card) < overlay (modal/sheet, floats above a card) < inset (recessed control fill, reads
-    // on either). surfaceOverlay used to be 0xFF202528, DARKER than the card it covers, so every dialog
-    // and bottom sheet sank into the page instead of lifting off it.
-    surfaceBase = Color(0xFF101619), surfaceRaised = Color(0xFF292D30), surfaceOverlay = Color(0xFF2F3438),
-    surfaceInset = Color(0xFF34393D), hairline = Color(0xFF394045), hairlineStrong = Color(0xFF4B5359),
-    textPrimary = Color(0xFFF4F6F7), textSecondary = Color(0xFFC5C9CC), textTertiary = Color(0xFF90969B),
+    // The four surfaces are an ELEVATION LADDER and must stay monotonically lighter in that order — base
+    // (canvas) < raised (card) < overlay (modal/sheet, floats above a card) < inset (recessed control fill).
+    // Clean-overview dark set: near-black canvas, soft charcoal cards, and a text ladder whose three steps
+    // stay visibly distinct (tertiary 5.5:1 on a card). The hairline sits BETWEEN card and inset so a
+    // divider on a recessed control still reads.
+    surfaceBase = Color(0xFF0B0C0F), surfaceRaised = Color(0xFF17181C), surfaceOverlay = Color(0xFF212227),
+    surfaceInset = Color(0xFF2A2B31), hairline = Color(0xFF26272D), hairlineStrong = Color(0xFF3A3C44),
+    textPrimary = Color(0xFFF4F5F8), textSecondary = Color(0xFFA4A9B5), textTertiary = Color(0xFF8B909C),
     glowAmbient = Color(0xFF3A2D0A),
     // Brand accent → mint, parity with iOS #1068 (NoopVisualStyle.mint/mintGlow). accentMuted is a dark
     // teal muted surface (green-shifted analog of the old navy 0xFF16233A). Gold stays in the recovery world.
@@ -128,13 +126,16 @@ val DarkTokens = PaletteTokens(
     recovery000 = Color(0xFFE0463C), recovery030 = Color(0xFFE8743C), recovery055 = Color(0xFFF9DF4A),
     recovery078 = Color(0xFF8FD86A), recovery100 = Color(0xFF03E095),
     strain000 = Color(0xFF9C5A14), strain033 = Color(0xFFC2762A), strain066 = Color(0xFFD98A3D), strain100 = Color(0xFFF0A85A),
-    sleepAwake = Color(0xFFC2CCDA), sleepLight = Color(0xFF4A90E2), sleepDeep = Color(0xFF2F6FCB), sleepREM = Color(0xFF6FA8E8),
+    // Sleep stages live in the Rest (violet) family: deepest stage darkest, REM lightest.
+    sleepAwake = Color(0xFFC2CCDA), sleepLight = Color(0xFF8C7CF0), sleepDeep = Color(0xFF5847D6), sleepREM = Color(0xFFC4B5FD),
     zone1 = Color(0xFF4A90E2), zone2 = Color(0xFF3FA9C9), zone3 = Color(0xFFE8B84B), zone4 = Color(0xFFD98A3D), zone5 = Color(0xFFE0662F),
     statusPositive = Color(0xFF03E095), statusWarning = Color(0xFFF0A020), statusCritical = Color(0xFFE0662F),
     metricCyan = Color(0xFF3FA9C9), metricPurple = Color(0xFF4A90E2), metricAmber = Color(0xFFD98A3D), metricRose = Color(0xFFE0662F),
-    chargeColor = Color(0xFF03E095), chargeDeep = Color(0xFF0B9D62), chargeBright = Color(0xFF6BF0B4), chargeGlow = Color(0xFF03E095),
-    effortColor = Color(0xFF4090E0), effortDeep = Color(0xFF2A6FB0), effortBright = Color(0xFF74B6F0), effortGlow = Color(0xFF4090E0),
-    restColor = Color(0xFF83A0B8), restDeep = Color(0xFF2F6FCB), restBright = Color(0xFF6FA8E8), restGlow = Color(0xFF4A90E2),
+    // Score families: each colour/deep/bright/glow quartet is ONE hue, so a gradient or glow drawn from a
+    // family never drifts into another score's colour. Charge green, Effort coral, Rest violet.
+    chargeColor = Color(0xFF4CD68A), chargeDeep = Color(0xFF1F9D5C), chargeBright = Color(0xFF8AEBB3), chargeGlow = Color(0xFF4CD68A),
+    effortColor = Color(0xFFFF7A45), effortDeep = Color(0xFFD4551F), effortBright = Color(0xFFFFA27A), effortGlow = Color(0xFFFF7A45),
+    restColor = Color(0xFF9D8CFF), restDeep = Color(0xFF6C5CE7), restBright = Color(0xFFC3B8FF), restGlow = Color(0xFF9D8CFF),
     stressColor = Color(0xFFF0A020), stressDeep = Color(0xFF4A90E2), stressBright = Color(0xFFE0662F), stressGlow = Color(0xFFF0A020),
     scenicCenter = Color(0xFF1C2128), scenicEdge = Color(0xFF121518), scenicStar = Color(0xFFC8CFD8),
     cardFillTop = Color(0xFF15243C), cardFillBottom = Color(0xFF0B1424),
@@ -150,38 +151,32 @@ val DarkTokens = PaletteTokens(
 )
 
 val LightTokens = PaletteTokens(
-    surfaceBase = Color(0xFFEAE3D4), surfaceRaised = Color(0xFFFFFFFF), surfaceOverlay = Color(0xFFFFFFFF),
-    surfaceInset = Color(0xFFDFD8C8), hairline = Color(0xFFD8D0BD), hairlineStrong = Color(0xFFC7BCA4),
-    // Light text ladder, re-valued for WCAG AA. The spec's tertiary (#7C8696) scored 2.88:1 on this canvas
-    // and 3.68:1 on a white card — under the 4.5:1 AA bar for normal text, and on the canvas under even the
-    // 3:1 large-text floor, across ~690 call sites that are mostly captions, units and footnotes. Two things
-    // compounded: the token was chosen against the spec's paler paper (#F4F1EA, where it still only reaches
-    // 3.26:1), and Android shipped a deeper tan canvas. Tertiary now clears AA on both surfaces, and
-    // secondary deepens with it so the three steps stay visibly distinct instead of collapsing together.
-    //   primary   #1A2230 → 12.50 canvas / 15.96 card
-    //   secondary #3E4757 →  7.33 canvas /  9.36 card   (was #4C5564, 5.89 / 7.52)
-    //   tertiary  #5A6472 →  4.70 canvas /  6.00 card   (was #7C8696, 2.88 / 3.68 — failed)
-    // The Apple twin (NoopVisualStyle.tertiaryText, light #7D808A) has the same failure and is NOT changed
-    // here; text colour is pixel-level, which the parity contract leaves to each platform.
-    textPrimary = Color(0xFF1A2230), textSecondary = Color(0xFF3E4757), textTertiary = Color(0xFF5A6472),
-    glowAmbient = Color(0xFFF0E4C0),
+    surfaceBase = Color(0xFFF2F3F7), surfaceRaised = Color(0xFFFFFFFF), surfaceOverlay = Color(0xFFFFFFFF),
+    surfaceInset = Color(0xFFECEDF2), hairline = Color(0xFFE3E5EB), hairlineStrong = Color(0xFFC9CDD6),
+    // Light text ladder, valued for WCAG AA on every light surface (canvas, card AND inset). Text colour
+    // is pixel-level, which the parity contract leaves to each platform.
+    //   primary   #14161C → 16.3 canvas / 18.1 card
+    //   secondary #4F5563 →  6.7 canvas /  7.5 card
+    //   tertiary  #626876 →  5.1 canvas /  5.6 card   (AA on every light surface, inset included)
+    textPrimary = Color(0xFF14161C), textSecondary = Color(0xFF4F5563), textTertiary = Color(0xFF626876),
+    glowAmbient = Color(0xFFE6E8F0),
     // Light chrome accent → brand mint, parity with iOS #1068 (NoopVisualStyle.mint/mintGlow, light side).
-    // accentMuted is a pale mint tint (green-shifted analog of the old pale blue 0xFFE4ECF6); note Android's
-    // light theme is a WARM paper theme, so this shade may want an on-device tweak. Gold stays in recovery.
+    // accentMuted is a pale mint tint (green-shifted analog of the old pale blue 0xFFE4ECF6).
     accent = Color(0xFF149A78), accentHover = Color(0xFF38C99E), accentMuted = Color(0xFFDCEDE6), focusRing = Color(0xFF149A78),
-    recovery000 = Color(0xFF8F6212), recovery030 = Color(0xFFA87718), recovery055 = Color(0xFFC28E26),
-    recovery078 = Color(0xFFD2A23A), recovery100 = Color(0xFFE0B44C),
+    // The same red → amber → green reading as the dark ramp, deepened for a white card.
+    recovery000 = Color(0xFFB3261E), recovery030 = Color(0xFFC8551C), recovery055 = Color(0xFFB88A12),
+    recovery078 = Color(0xFF5E9E2E), recovery100 = Color(0xFF178049),
     strain000 = Color(0xFF7E460E), strain033 = Color(0xFFA4621B), strain066 = Color(0xFFC2792E), strain100 = Color(0xFFD89240),
-    sleepAwake = Color(0xFF97A2B2), sleepLight = Color(0xFF3A80D6), sleepDeep = Color(0xFF234F9E), sleepREM = Color(0xFF5790DA),
+    sleepAwake = Color(0xFF97A2B2), sleepLight = Color(0xFF7A68E0), sleepDeep = Color(0xFF3F2FA8), sleepREM = Color(0xFF9C89EE),
     zone1 = Color(0xFF3A80D6), zone2 = Color(0xFF2E92B4), zone3 = Color(0xFFC28E26), zone4 = Color(0xFFC2792E), zone5 = Color(0xFFC84E1E),
-    statusPositive = Color(0xFFB07D17), statusWarning = Color(0xFFC2792E), statusCritical = Color(0xFFC84E1E),
+    statusPositive = Color(0xFF178049), statusWarning = Color(0xFFB86A12), statusCritical = Color(0xFFC0392B),
     metricCyan = Color(0xFF2E92B4), metricPurple = Color(0xFF3A80D6), metricAmber = Color(0xFFC2792E), metricRose = Color(0xFFC84E1E),
-    chargeColor = Color(0xFFB88421), chargeDeep = Color(0xFF8F6212), chargeBright = Color(0xFFE0B44C), chargeGlow = Color(0xFFC8902F),
-    effortColor = Color(0xFFB26A1C), effortDeep = Color(0xFF7E460E), effortBright = Color(0xFFD89240), effortGlow = Color(0xFFB26A1C),
-    restColor = Color(0xFF3A80D6), restDeep = Color(0xFF234F9E), restBright = Color(0xFF5790DA), restGlow = Color(0xFF3A80D6),
+    chargeColor = Color(0xFF178049), chargeDeep = Color(0xFF0F6136), chargeBright = Color(0xFF37B06D), chargeGlow = Color(0xFF178049),
+    effortColor = Color(0xFFC24E14), effortDeep = Color(0xFF943A0C), effortBright = Color(0xFFE8763D), effortGlow = Color(0xFFC24E14),
+    restColor = Color(0xFF5B47C9), restDeep = Color(0xFF43329E), restBright = Color(0xFF8B7BE6), restGlow = Color(0xFF5B47C9),
     stressColor = Color(0xFFB88421), stressDeep = Color(0xFF3A80D6), stressBright = Color(0xFFC84E1E), stressGlow = Color(0xFFB88421),
-    scenicCenter = Color(0xFFFBF6EA), scenicEdge = Color(0xFFEDE6D6), scenicStar = Color(0xFFD8CDB6),
-    cardFillTop = Color(0xFFFFFFFF), cardFillBottom = Color(0xFFFAF7F0),
+    scenicCenter = Color(0xFFF7F8FB), scenicEdge = Color(0xFFE9EBF1), scenicStar = Color(0xFFC9CDD6),
+    cardFillTop = Color(0xFFFFFFFF), cardFillBottom = Color(0xFFF7F8FA),
     gold = Color(0xFFDBA52A), goldLight = Color(0xFFECC766), goldDeep = Color(0xFF9A6B12),
     goldDeepText = Color(0xFF3A2708), signalYellow = Color(0xFFE8A800),
     titaniumTop = Color(0xFFDDE1E6), titaniumMid = Color(0xFFBBC2C9), titaniumLow = Color(0xFF98A0A8), titaniumDeep = Color(0xFF6B737B),
@@ -193,7 +188,7 @@ val LightTokens = PaletteTokens(
     // produced. The well is a warm translucent shade so the canvas reads through the empty part, the
     // inner shadow drops to a whisper (a 30% black falloff looked like grime on cream), and the glass
     // catch strengthens, because a white highlight has to work harder against a light body.
-    vesselWell = Color(0x66B8AF9B), vesselTrack = Color(0xFFDFD8C8),
+    vesselWell = Color(0x66C9CDD6), vesselTrack = Color(0xFFE3E5EB),
     vesselInnerShadow = Color(0x1F000000), vesselHighlight = Color(0x8CFFFFFF),
 )
 

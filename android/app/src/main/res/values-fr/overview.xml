@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="overview_recovery">Récupération</string>
+    <string name="overview_sleep">Sommeil</string>
+    <string name="overview_percent">%1$d%%</string>
+    <string name="overview_out_of">Sur %1$d</string>
+    <string name="overview_sleep_score">Score de sommeil</string>
+    <string name="overview_sleep_pending">Nécessite une nuit enregistrée</string>
+    <string name="overview_score_source">Scores de %1$s</string>
+    <string name="overview_daily_insight">Votre journée en bref</string>
+    <string name="overview_health_monitor">Suivi de santé</string>
+    <string name="overview_monitor_empty">En attente des mesures nocturnes</string>
+    <string name="overview_monitor_partial">Certaines mesures sont indisponibles</string>
+    <string name="overview_monitor_outside">Mesures hors de leur plage de référence</string>
+    <string name="overview_monitor_personal">Les 3 mesures dans votre plage habituelle</string>
+    <string name="overview_monitor_typical">Les 3 mesures dans les plages de référence</string>
+    <string name="overview_in_personal">Dans votre plage habituelle</string>
+    <string name="overview_out_personal">Hors de votre plage habituelle</string>
+    <string name="overview_in_typical">Dans la plage typique</string>
+    <string name="overview_out_typical">Hors de la plage typique</string>
+    <string name="overview_expanded">Développé</string>
+    <string name="overview_collapsed">Réduit</string>
+    <string name="overview_sleep_summary">Aperçu du sommeil</string>
+    <string name="overview_sleep_duration">%1$d h %2$d min</string>
+    <string name="overview_sleep_deep">Profond</string>
+    <string name="overview_sleep_rem">REM</string>
+    <string name="overview_sleep_light">Léger</string>
+    <string name="overview_sleep_details">Touchez pour voir les détails du sommeil</string>
+    <string name="overview_stage_minutes">%1$s · %2$d min</string>
+    <string name="overview_connected">Bracelet connecté</string>
+    <string name="overview_disconnected">Bracelet déconnecté</string>
+    <string name="overview_minutes">%1$d min</string>
+    <string name="overview_insight_label">Aperçu</string>
+</resources>
