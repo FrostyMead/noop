@@ -45,7 +45,7 @@ internal fun ThreeDaySelectorBar(
     onSelect: (Int) -> Unit,
 ) {
     val base = LocalDate.now()
-    val blockShape = RoundedCornerShape(Metrics.cornerSm)
+    val blockShape = RoundedCornerShape(Metrics.cornerMd)
     Row(horizontalArrangement = Arrangement.spacedBy(Metrics.selectorSpacing)) {
         listOf(2, 1, 0).forEach { offset ->
             val day = base.minusDays(offset.toLong())
@@ -147,7 +147,7 @@ internal fun DayNavBar(
         else -> selectedDay.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.US))
     }
     val date = selectedDay.format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.US))
-    val blockShape = RoundedCornerShape(Metrics.cornerSm)
+    val blockShape = RoundedCornerShape(Metrics.cornerMd)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -195,7 +195,7 @@ internal fun InsetChartPlaceholder(
         modifier = Modifier
             .fillMaxWidth()
             .height(height)
-            .clip(RoundedCornerShape(Metrics.cornerSm))
+            .clip(RoundedCornerShape(Metrics.cornerMd))
             .background(Palette.surfaceInset),
         contentAlignment = Alignment.Center,
     ) {

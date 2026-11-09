@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="overview_recovery">Regeneracja</string>
+    <string name="overview_sleep">Sen</string>
+    <string name="overview_percent">%1$d%%</string>
+    <string name="overview_out_of">Z %1$d</string>
+    <string name="overview_sleep_score">Ocena snu</string>
+    <string name="overview_sleep_pending">Wymaga zarejestrowanej nocy</string>
+    <string name="overview_score_source">Wyniki z %1$s</string>
+    <string name="overview_daily_insight">Twój dzień w skrócie</string>
+    <string name="overview_health_monitor">Monitor zdrowia</string>
+    <string name="overview_monitor_empty">Oczekiwanie na pomiary nocne</string>
+    <string name="overview_monitor_partial">Niektóre pomiary są niedostępne</string>
+    <string name="overview_monitor_outside">Pomiary poza zakresem odniesienia</string>
+    <string name="overview_monitor_personal">Wszystkie 3 pomiary w Twoim zwykłym zakresie</string>
+    <string name="overview_monitor_typical">Wszystkie 3 pomiary w zakresach odniesienia</string>
+    <string name="overview_in_personal">W Twoim zwykłym zakresie</string>
+    <string name="overview_out_personal">Poza Twoim zwykłym zakresem</string>
+    <string name="overview_in_typical">W typowym zakresie</string>
+    <string name="overview_out_typical">Poza typowym zakresem</string>
+    <string name="overview_expanded">Rozwinięte</string>
+    <string name="overview_collapsed">Zwinięte</string>
+    <string name="overview_sleep_summary">Podsumowanie snu</string>
+    <string name="overview_sleep_duration">%1$d godz. %2$d min</string>
+    <string name="overview_sleep_deep">Głęboki</string>
+    <string name="overview_sleep_rem">REM</string>
+    <string name="overview_sleep_light">Lekki</string>
+    <string name="overview_sleep_details">Dotknij, aby zobaczyć szczegóły snu</string>
+    <string name="overview_stage_minutes">%1$s · %2$d min</string>
+    <string name="overview_connected">Opaska połączona</string>
+    <string name="overview_disconnected">Opaska rozłączona</string>
+    <string name="overview_minutes">%1$d min</string>
+    <string name="overview_insight_label">Podsumowanie</string>
+    <string name="sleep_scene_in_bed">Czas w łóżku</string>
+    <string name="sleep_scene_asleep">Czas snu</string>
+    <string name="sleep_scene_performance">Jakość snu</string>
+</resources>

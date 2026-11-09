@@ -40,9 +40,10 @@ import kotlin.math.sin
 
 object LiquidRender {
 
-    // Structural near-blacks (ported as-is from the Swift renderer's literal rgba wells).
-    private val wellInk = Color(red = 10f / 255f, green = 11f / 255f, blue = 16f / 255f, alpha = 0.55f)
-    private val tubeTrack = Color(red = 14f / 255f, green = 14f / 255f, blue = 18f / 255f, alpha = 1f)
+    // The vessel's structural materials come from the palette (Palette.vessel*), not from literals.
+    // They used to be near-black rgba constants ported as-is from the Swift renderer, which meant the
+    // hero rendered three charcoal discs on the warm-paper LIGHT theme. Palette reads re-resolve inside
+    // a DrawScope, so the theme flip re-colours the vessel with no call-site change.
 
     // Colour helpers on `tint` (mirror LiquidCore.swift's liquidDarker / liquidMix). These operate
     // on the passed-in tint colour, not on any physics — kept here so the renderer is self-contained.
@@ -81,7 +82,7 @@ object LiquidRender {
         val well = Path().apply {
             addOval(Rect(left = (cx - R).toFloat(), top = (cy - R).toFloat(), right = (cx + R).toFloat(), bottom = (cy + R).toFloat()))
         }
-        drawPath(well, color = wellInk)
+        drawPath(well, color = Palette.vesselWell)
 
         // Everything below is drawn in the centred coordinate system (origin at the vessel centre),
         // clipped to the circle — the Swift `body` context (ctx.translateBy(cx,cy) then clip).
@@ -232,7 +233,7 @@ object LiquidRender {
                 // inner top shadow
                 drawRect(
                     brush = Brush.linearGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.30f), Color.Black.copy(alpha = 0f)),
+                        colors = listOf(Palette.vesselInnerShadow, Palette.vesselInnerShadow.copy(alpha = 0f)),
                         start = Offset(0f, (-R).toFloat()),
                         end = Offset(0f, (-R * 0.30).toFloat()),
                     ),
@@ -248,7 +249,7 @@ object LiquidRender {
                 drawPath(
                     hiPath,
                     brush = Brush.radialGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.09f), Color.White.copy(alpha = 0f)),
+                        colors = listOf(Palette.vesselHighlight, Palette.vesselHighlight.copy(alpha = 0f)),
                         center = Offset((-R * 0.27).toFloat(), (-R * 0.5).toFloat()),
                         radius = (R * 0.55).toFloat(),
                     ),
@@ -273,7 +274,7 @@ object LiquidRender {
                 ),
             )
         }
-        drawPath(outline, color = tubeTrack)
+        drawPath(outline, color = Palette.vesselTrack)
         drawPath(outline, color = Color.White.copy(alpha = 0.07f), style = Stroke(width = 1f))
 
         clipPath(outline) {

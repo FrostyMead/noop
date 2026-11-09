@@ -1,6 +1,12 @@
 package com.noop.ui
 
 import com.noop.R
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Nightlight
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,6 +72,67 @@ internal fun NightDetailHostCard(m: SleepModel, onMetricClick: (String) -> Unit 
     MetricGrid(m, onMetricClick = onMetricClick)
 }
 
+/**
+ * The four scores that make up sleep performance, read as one list against each metric's own typical
+ * value — the contributor panel that sits directly under the Rest hero.
+ *
+ * This is the same data the Night-detail grid already carries, in the OTHER useful shape. A grid of tiles
+ * answers "how is each metric doing"; a stacked list under the score answers "which of these is why the
+ * score is what it is", which is the question someone has just after reading the number. Both are worth
+ * having, so this adds a reading rather than replacing the grid.
+ *
+ * [Metric.typical] is a trailing mean, so a metric with no history yet renders its value with no arrow and
+ * no baseline line rather than being compared against nothing.
+ */
+@Composable
+internal fun SleepContributorsCard(m: SleepModel, onMetricClick: (String) -> Unit = {}) {
+    // Each row: glyph, label, the value, its typical, and which direction is the good one. Efficiency and
+    // hours-vs-needed read "higher is better"; so do performance and consistency, so all four share it —
+    // but the flag is stated per row rather than assumed, because a future contributor (sleep stress,
+    // wake events) will not.
+    data class Row(
+        val key: String,
+        val icon: ImageVector,
+        val label: String,
+        val metric: Metric,
+        val higherIsBetter: Boolean = true,
+    )
+
+    val rows = listOf(
+        Row("hours_vs_needed", Icons.Filled.Bedtime, uiString(R.string.sleep_contributor_hours_vs_needed), m.hoursVsNeeded),
+        Row("consistency", Icons.Filled.Schedule, uiString(R.string.sleep_contributor_consistency), m.consistency),
+        Row("efficiency", Icons.Filled.Speed, uiString(R.string.sleep_contributor_efficiency), m.efficiency),
+        Row("restorative", Icons.Filled.Nightlight, uiString(R.string.sleep_contributor_restorative), m.restorative),
+    ).filter { it.metric.latest != null }
+
+    if (rows.isEmpty()) return
+
+    NoopCard {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
+            rows.forEachIndexed { index, row ->
+                val value = row.metric.latest ?: return@forEachIndexed
+                val typical = row.metric.typical
+                MetricComparisonRow(
+                    icon = row.icon,
+                    label = row.label,
+                    value = pctValue(value),
+                    baseline = typical?.let { pctValue(it) },
+                    // A whole percentage point is the smallest difference worth an arrow; below that the
+                    // two values round to the same displayed number and an arrow contradicts the text.
+                    direction = metricDirection(value, typical, epsilon = 0.5),
+                    higherIsBetter = row.higherIsBetter,
+                    modifier = Modifier.clickable { onMetricClick(row.key) },
+                    contentDescription = typical?.let {
+                        uiString(R.string.sleep_contributor_desc, row.label, pctValue(value), pctValue(it))
+                    } ?: uiString(R.string.sleep_contributor_desc_no_baseline, row.label, pctValue(value)),
+                )
+                if (index != rows.lastIndex) CardDivider()
+            }
+            ComparisonLegend(uiString(R.string.sleep_contributor_legend))
+        }
+    }
+}
+
 @Composable
 private fun MetricGrid(m: SleepModel, onMetricClick: (String) -> Unit = {}) {
     val tiles = listOf<@Composable (Modifier) -> Unit>(
@@ -84,7 +152,7 @@ private fun MetricGrid(m: SleepModel, onMetricClick: (String) -> Unit = {}) {
                 value = pctValue(m.efficiency.latest),
                 caption = vsTypical(m.efficiency.latest, m.efficiency.typical, "%"),
                 accent = Palette.statusPositive,
-                spark = m.efficiency.series, sparkColor = Palette.statusPositive,
+                spark = m.efficiency.series, sparkColor = Palette.restColor,
                 onClick = { onMetricClick("efficiency") },
             )
         },
@@ -94,7 +162,7 @@ private fun MetricGrid(m: SleepModel, onMetricClick: (String) -> Unit = {}) {
                 value = pctValue(m.consistency.latest),
                 caption = vsTypical(m.consistency.latest, m.consistency.typical, "%"),
                 accent = m.consistency.latest?.let { Palette.recoveryColor(it) } ?: Palette.textPrimary,
-                spark = m.consistency.series, sparkColor = Palette.metricCyan,
+                spark = m.consistency.series, sparkColor = Palette.restColor,
                 onClick = { onMetricClick("consistency") },
             )
         },
@@ -114,7 +182,7 @@ private fun MetricGrid(m: SleepModel, onMetricClick: (String) -> Unit = {}) {
                 value = pctValue(m.restorative.latest),
                 caption = vsTypical(m.restorative.latest, m.restorative.typical, "%"),
                 accent = Palette.sleepREM,
-                spark = m.restorative.series, sparkColor = Palette.sleepREM,
+                spark = m.restorative.series, sparkColor = Palette.restColor,
                 onClick = { onMetricClick("restorative") },
             )
         },
@@ -124,14 +192,14 @@ private fun MetricGrid(m: SleepModel, onMetricClick: (String) -> Unit = {}) {
                 value = m.respiratory.latest?.let { String.format(Locale.US, "%.1f", it) } ?: "—",
                 caption = vsTypical(m.respiratory.latest, m.respiratory.typical, " rpm", decimals = 1),
                 accent = Palette.metricPurple,
-                spark = m.respiratory.series, sparkColor = Palette.metricPurple,
+                spark = m.respiratory.series, sparkColor = Palette.restColor,
                 onClick = { onMetricClick("respiratory") },
             )
         },
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        SectionHeader("Night detail", overline = "Metrics", trailing = "vs typical")
+        SectionHeader("Night detail", trailing = "vs typical")
 
         // Sleep Debt is the actionable summary for the section, so it leads at the full
         // two-column width. The remaining six peer metrics keep the established 2 × 3 grid.
@@ -140,7 +208,7 @@ private fun MetricGrid(m: SleepModel, onMetricClick: (String) -> Unit = {}) {
             value = m.sleepDebt.latest?.let { durationText(it) } ?: "—",
             caption = debtCaption(m.sleepDebt.latest),
             accent = debtColor(m.sleepDebt.latest),
-            spark = m.sleepDebt.series, sparkColor = Palette.metricRose,
+            spark = m.sleepDebt.series, sparkColor = Palette.restColor,
             onClick = { onMetricClick("sleep_debt") },
         )
 
@@ -188,7 +256,7 @@ internal fun SleepDebtLedgerHostCard(m: SleepModel) {
                         Text(
                             debtHeadline(ledger),
                             style = NoopType.tileValueLarge,
-                            color = debtBalanceColor(ledger),
+                            color = Palette.textPrimary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
@@ -229,8 +297,9 @@ internal fun SleepDebtLedgerHostCard(m: SleepModel) {
 private fun DebtDeltaBars(ledger: SleepDebtLedger) {
     val deltas = ledger.nights.map { it.deltaMin }
     val scale = max(deltas.maxOfOrNull { abs(it) } ?: 1.0, 1.0)
-    val accentColor = Palette.accent
-    val deficitColor = Palette.metricRose
+    // One hue for the Sleep tab: position carries the sign (surplus above the line, deficit below).
+    val accentColor = Palette.restBright
+    val deficitColor = Palette.restDeep
     val centreColor = Palette.hairline
     Box(
         modifier = Modifier
@@ -576,7 +645,7 @@ internal fun DurationTrend(m: SleepModel) {
                         values = m.trendDebtHours,
                         modifier = Modifier.fillMaxWidth().height(Metrics.compactChartHeight)
                             .semantics { contentDescription = uiString(R.string.l10n_sleep_screen_sleep_debt_trend_chart_9e178776) },
-                        color = Palette.metricRose,
+                        color = Palette.restColor,
                         selectionEnabled = true,
                         selectionLabels = m.trendDates.map(::shortDayLabel),   // #691: hover shows date + value
                     )
@@ -729,25 +798,30 @@ private fun SparkTile(
         // fillMaxHeight so the weight-spacer can pin the sparkline to the card bottom once the
         // MetricGrid row bounds the height (Row height(IntrinsicSize.Max) + tile fillMaxHeight()).
         Column(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
-            Overline(label)
+            Text(label, style = NoopType.eyebrow, color = Palette.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 value,
                 style = NoopType.tileValue,
-                color = accent,
+                color = Palette.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = Metrics.space4),
             )
             if (caption != null) {
+                // The value's grade (the accent) rides on a small dot, so the number itself stays neutral.
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space4),
+                    modifier = Modifier.padding(top = Metrics.space2)) {
+                    Box(Modifier.size(TodayStyle.statusDot).clip(CircleShape).background(accent))
                 Text(
                     caption,
                     style = NoopType.footnote,
-                    color = Palette.textTertiary,
+                    color = Palette.textSecondary,
                     // Full card width now, so the "-3% vs typical" caption fits; ellipsis stays as a
                     // safety net for extreme localized strings.
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = Metrics.space2),
                 )
+                }
             }
             Spacer(Modifier.weight(1f))
             val tail = spark.takeLast(30)
@@ -1028,7 +1102,7 @@ internal fun SleepConsistencyCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
-                    .clip(RoundedCornerShape(Metrics.cornerSm))
+                    .clip(RoundedCornerShape(Metrics.cornerMd))
                     .semantics { contentDescription = uiString(R.string.l10n_sleep_screen_sleep_consistency_nightly_bed_and_wake_14526f89) }
                     .drawBehind {
                         val yAxisW = 52f
@@ -1041,7 +1115,7 @@ internal fun SleepConsistencyCard(
                         // got cropped (#443). Fix: a smaller label that fits the 52px gutter, and a
                         // baseline that's CENTRED on each gridline then clamped so the full glyph
                         // (ascent..descent) clears the rounded corners (cornerSm, in px) top and bottom.
-                        val cornerPx = Metrics.cornerSm.toPx()
+                        val cornerPx = Metrics.cornerMd.toPx()
                         val paint = android.graphics.Paint().apply {
                             color = labelArgb
                             textSize = 20f

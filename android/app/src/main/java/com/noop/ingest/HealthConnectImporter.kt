@@ -967,7 +967,12 @@ object HealthConnectImporter {
      * differ only in which rules resolve the instant.
      */
     internal fun localDayKey(instant: Instant, offset: ZoneOffset?, zone: ZoneId): String =
-        LocalDate.ofInstant(instant, offset ?: zone).toString()
+        // `LocalDate.ofInstant` is Java 9 and Android only added it in API 34, so on minSdk 26 it throws
+        // NoSuchMethodError on every device below Android 14 — the whole install base bar the newest. The
+        // unit tests never caught it because they run on a desktop JVM, where the method has existed for
+        // years: green on the JVM, crash on the phone. `atZone(...).toLocalDate()` is the same conversion
+        // through API-26-safe calls, and HealthConnectZoneOffsetTest pins that the two agree.
+        instant.atZone(offset ?: zone).toLocalDate().toString()
 
     /**
      * #589 de-overlap for a per-source step map: SUM is already folded WITHIN each source by the read

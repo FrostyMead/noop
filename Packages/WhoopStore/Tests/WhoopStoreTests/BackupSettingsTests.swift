@@ -23,6 +23,8 @@ final class BackupSettingsTests: XCTestCase {
             "effort.scale": "whoop",
             // #today-hosted-cards: the one layout pref carried, a JSON [String] stored under the String kind.
             "today.hostedCards": "[\"sleep.sleepMarks\"]",
+            "strength.routines": #"{"routines":[],"version":1}"#,
+            "strength.restSeconds": 120,
             // #1361: custom journal behaviours, a newline-joined name list — the embedded newline must
             // survive the JSON round-trip (and stay byte-identical to Android's pref value).
             "journal.customBehaviors": "Cold plunge\nMagnesium",
@@ -41,6 +43,8 @@ final class BackupSettingsTests: XCTestCase {
         XCTAssertEqual(back["units.temperature"] as? String, "celsius")
         XCTAssertEqual(back["effort.scale"] as? String, "whoop")
         XCTAssertEqual(back["today.hostedCards"] as? String, "[\"sleep.sleepMarks\"]")
+        XCTAssertEqual(back["strength.routines"] as? String, #"{"routines":[],"version":1}"#)
+        XCTAssertEqual(back["strength.restSeconds"] as? Int, 120)
         XCTAssertEqual(back["journal.customBehaviors"] as? String, "Cold plunge\nMagnesium")
         XCTAssertEqual(back.count, values.count, "Nothing extra should appear")
     }
@@ -115,12 +119,17 @@ final class BackupSettingsTests: XCTestCase {
         defaults.set(82.5, forKey: "profile.weightKg")
         defaults.set(198, forKey: "profile.hrMaxOverride") // storage key, not the canonical name
         defaults.set("imperial", forKey: "units.system")
+        defaults.set(#"{"routines":[],"version":1}"#, forKey: StrengthRoutineLibrary.storageKey)
+        defaults.set(120, forKey: StrengthRestTimer.storageKey)
 
         let snap = BackupSettings.snapshot(from: defaults)
         XCTAssertEqual(snap["profile.age"] as? Int, 29)
         XCTAssertEqual(snap["profile.weightKg"] as? Double, 82.5)
         XCTAssertEqual(snap["profile.hrMax"] as? Int, 198, "hrMaxOverride surfaces under the canonical key")
         XCTAssertEqual(snap["units.system"] as? String, "imperial")
+        XCTAssertEqual(snap[StrengthRoutineLibrary.storageKey] as? String,
+                       #"{"routines":[],"version":1}"#)
+        XCTAssertEqual(snap[StrengthRestTimer.storageKey] as? Int, 120)
         XCTAssertNil(snap["profile.heightCm"], "Never-set keys are omitted, not defaulted")
         XCTAssertNil(snap["profile.sex"])
     }
@@ -133,12 +142,17 @@ final class BackupSettingsTests: XCTestCase {
             "profile.age": 41,
             "profile.hrMax": 187,
             "units.temperature": "fahrenheit",
+            StrengthRoutineLibrary.storageKey: #"{"routines":[],"version":1}"#,
+            StrengthRestTimer.storageKey: 180,
         ], to: defaults)
 
         XCTAssertEqual(defaults.object(forKey: "profile.age") as? Int, 41)
         XCTAssertEqual(defaults.object(forKey: "profile.hrMaxOverride") as? Int, 187,
                        "Canonical profile.hrMax lands on the profile.hrMaxOverride storage key")
         XCTAssertEqual(defaults.string(forKey: "units.temperature"), "fahrenheit")
+        XCTAssertEqual(defaults.string(forKey: StrengthRoutineLibrary.storageKey),
+                       #"{"routines":[],"version":1}"#)
+        XCTAssertEqual(defaults.integer(forKey: StrengthRestTimer.storageKey), 180)
         XCTAssertEqual(defaults.object(forKey: "profile.heightCm") as? Double, 175.0,
                        "Keys absent from the payload keep the target's value")
         XCTAssertNil(defaults.object(forKey: "profile.hrMax"),

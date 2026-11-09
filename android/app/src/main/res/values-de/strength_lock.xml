@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strength workout, app lock and activity export copy (moved out of the Kotlin sources). -->
+<resources>
+    <string name="lock_title">NOOP ist gesperrt</string>
+    <string name="lock_body">Entsperre mit Fingerabdruck, Gesicht oder der Bildschirmsperre deines Telefons. Die Bluetooth-Erfassung kann weiterlaufen, während dieser Bildschirm gesperrt ist.</string>
+    <string name="lock_unlock">Entsperren</string>
+    <string name="lock_phone_security">Sicherheitseinstellungen des Telefons</string>
+    <string name="lock_unlock_noop">NOOP entsperren</string>
+    <string name="lock_settings_section">Datenschutz &amp; App-Sperre</string>
+    <string name="lock_setting_title">NOOP sperren</string>
+    <string name="lock_turn_on">NOOP-App-Sperre einschalten</string>
+    <string name="lock_turn_off">NOOP-App-Sperre ausschalten</string>
+    <string name="lock_no_secure_lock">Dein Telefon hat derzeit keine sichere Bildschirmsperre. Richte eine ein, bevor du die NOOP-App-Sperre aktivierst.</string>
+    <string name="lock_open_security">Sicherheitseinstellungen öffnen</string>
+    <string name="export_gpx">GPX</string>
+    <string name="export_fit">FIT</string>
+    <string name="sw_log_strength">Kraft erfassen</string>
+    <string name="sw_strength_log">Krafttraining-Protokoll</string>
+    <string name="sw_volume_note_detail">Volumen = Wiederholungen × Zusatzlast der Arbeitssätze. Es wird getrennt von der aus der Herzfrequenz abgeleiteten Belastung angezeigt.</string>
+    <string name="sw_log_title">Krafttraining erfassen</string>
+    <string name="sw_edit_title">Krafttraining bearbeiten</string>
+    <string name="sw_privacy_note">Übungen und Sätze bleiben auf diesem Gerät und in deinem NOOP-Backup.</string>
+    <string name="sw_duration_minutes">Dauer (Minuten)</string>
+    <string name="sw_routines_header">ROUTINEN</string>
+    <string name="sw_routines_empty">Speichere diesen Ablauf, um ihn später wiederzuverwenden.</string>
+    <string name="sw_routines_some">Lade einen gespeicherten Ablauf oder aktualisiere den aktuellen.</string>
+    <string name="sw_load_routine">Routine laden</string>
+    <string name="sw_save_routine">Routine speichern</string>
+    <string name="sw_update_routine">Routine aktualisieren</string>
+    <string name="sw_rest_timer_header">PAUSENTIMER</string>
+    <string name="sw_next_set_in">Nächster Satz in</string>
+    <string name="sw_ready">Bereit, wenn du es bist</string>
+    <string name="sw_rest_complete">Pause vorbei</string>
+    <string name="sw_rest_button">Pause %1$s</string>
+    <string name="sw_restart">Neu starten</string>
+    <string name="sw_start">Starten</string>
+    <string name="sw_add_30s">+30 s</string>
+    <string name="sw_skip">Überspringen</string>
+    <string name="sw_exercise">Übung</string>
+    <string name="sw_remove">Entfernen</string>
+    <string name="sw_reps">Wdh.</string>
+    <string name="sw_unit_load">Last (%1$s)</string>
+    <string name="sw_warmup">Aufwärmen</string>
+    <string name="sw_remove_set">Satz entfernen</string>
+    <string name="sw_add_set">Satz hinzufügen</string>
+    <string name="sw_add_exercise">Übung hinzufügen</string>
+    <string name="sw_volume_note_dialog">Volumen = Wiederholungen × Zusatzlast der Arbeitssätze. Aufwärmsätze und Körpergewichtssätze ohne Zusatzlast zählen nicht.</string>
+    <string name="sw_validation">Füge eine Übung hinzu und trage für jeden Satz 1–1.000 Wiederholungen ein. Die Last ist optional.</string>
+    <string name="sw_add">Hinzufügen</string>
+    <string name="sw_save">Speichern</string>
+    <string name="sw_cancel">Abbrechen</string>
+    <string name="sw_routines_title">Kraft-Routinen</string>
+    <string name="sw_load">Laden</string>
+    <string name="sw_delete">Löschen</string>
+    <string name="sw_done">Fertig</string>
+    <string name="sw_save_routine_title">Routine speichern</string>
+    <string name="sw_routine_name">Name der Routine</string>
+    <string name="sw_save_routine_hint">Speichere diese Übungen, Sätze, Wiederholungen und Lasten für ein späteres Training.</string>
+    <string name="sw_started">Gestartet: %1$s</string>
+    <string name="sw_progression_header">FORTSCHRITT</string>
+    <string name="sw_new_pr_one">★ %1$d NEUER REKORD</string>
+    <string name="sw_new_pr_many">★ %1$d NEUE REKORDE</string>
+    <string name="sw_progress_compared">Verglichen mit früher erfassten Sätzen. Das geschätzte 1RM nutzt Epley nur für Sätze mit 1–12 Wiederholungen.</string>
+    <string name="sw_progress_first">Das ist der erste Wert mit Last für diese Übung. Das geschätzte 1RM nutzt Epley für 1–12 Wiederholungen.</string>
+</resources>

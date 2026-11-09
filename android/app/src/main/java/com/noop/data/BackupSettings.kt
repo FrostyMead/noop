@@ -61,6 +61,9 @@ object BackupSettingsCodec {
         // built and expects across a restore. Its POSITION (the addedCards slot in today.sectionOrder) is
         // not carried, so on restore the set + internal order return but the section sits at its default.
         HostedCardPrefs.KEY_SELECTION to Kind.STRING,
+        // Bounded, versioned reusable strength templates. Contains no device identifiers or credentials.
+        StrengthRoutineLibrary.PREFS_KEY to Kind.STRING,
+        StrengthRestTimer.PREFS_KEY to Kind.INT,
         // #1361: the user's own custom journal BEHAVIOURS (a newline-joined list of names). The journal
         // EFFECTS ride the DB backup, but the behaviour DEFINITIONS live only in prefs, so a restore left
         // the entries referencing behaviours the logging catalog no longer offered. Platform-neutral key;
@@ -151,6 +154,16 @@ object BackupSettingsBridge {
         if (noop.contains(HostedCardPrefs.KEY_SELECTION)) {
             noop.getString(HostedCardPrefs.KEY_SELECTION, null)?.let { values[HostedCardPrefs.KEY_SELECTION] = it }
         }
+        if (noop.contains(StrengthRoutineLibrary.PREFS_KEY)) {
+            noop.getString(StrengthRoutineLibrary.PREFS_KEY, null)
+                ?.let { values[StrengthRoutineLibrary.PREFS_KEY] = it }
+        }
+        if (noop.contains(StrengthRestTimer.PREFS_KEY)) {
+            values[StrengthRestTimer.PREFS_KEY] = noop.getInt(
+                StrengthRestTimer.PREFS_KEY,
+                StrengthRestTimer.DEFAULT_SECONDS,
+            )
+        }
         // #1361: custom journal behaviours from the LIVE v2 catalog blob (the legacy key is read-once-
         // then-stale). Parse raw to avoid a data→ui dependency; shape mirrors JournalCatalog.
         noop.getString(JOURNAL_CATALOG_V2_PREF, null)?.let { blob ->
@@ -187,6 +200,10 @@ object BackupSettingsBridge {
         }
         (values["effort.scale"] as? String)?.let { editor.putString(UnitPrefs.KEY_EFFORT_SCALE, it) }
         (values[HostedCardPrefs.KEY_SELECTION] as? String)?.let { editor.putString(HostedCardPrefs.KEY_SELECTION, it) }
+        (values[StrengthRoutineLibrary.PREFS_KEY] as? String)
+            ?.let { editor.putString(StrengthRoutineLibrary.PREFS_KEY, it) }
+        (values[StrengthRestTimer.PREFS_KEY] as? Int)
+            ?.let { editor.putInt(StrengthRestTimer.PREFS_KEY, it) }
         // #1361: restore custom behaviours — write the names to the legacy custom key, clear stale hidden,
         // and drop the v2 blob so the next catalog load re-migrates them (restart-gated, #57). Mirrors iOS.
         (values["journal.customBehaviors"] as? String)?.let { joined ->

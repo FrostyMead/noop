@@ -2464,6 +2464,22 @@ final class Repository: ObservableObject {
         return await reconcileWorkoutHrWithTrace(visible, store: store)
     }
 
+    /// Structured strength rows for progression/PR comparisons, without the expensive HR reconciliation
+    /// that the visible workouts feed needs. Manual strength logs live under the active/canonical strap
+    /// ids; malformed and ordinary cardio rows are discarded before the caller derives records.
+    func strengthWorkoutRows(days: Int = 20_000) async -> [WorkoutRow] {
+        guard let store = await ensureStore() else { return [] }
+        let now = Int(Date().timeIntervalSince1970)
+        let lo = now - days * 86_400, hi = now + 86_400
+        var rows: [WorkoutRow] = []
+        for id in importedReadIds {
+            rows += (try? await store.workouts(deviceId: id, from: lo, to: hi, limit: 5000)) ?? []
+        }
+        return Self.dedupWorkoutsByNaturalKey(rows)
+            .filter { StrengthWorkout.decode($0.strengthJSON) != nil }
+            .sorted { $0.startTs > $1.startTs }
+    }
+
     /// DISPLAY-ONLY: reconcile each workout's shown Avg/Max HR with the strap trace that actually drives
     /// its graph / zones / effort (#77, #499). The detail screen always charts (`workoutHrBuckets`) and
     /// zone-bins (`workoutZoneMinutes`) the strap's own ~1 Hz samples over `[startTs, endTs]`; the
@@ -2595,7 +2611,8 @@ final class Repository: ObservableObject {
             return WorkoutRow(startTs: row.startTs, endTs: row.endTs, sport: row.sport,
                               source: row.source, durationS: row.durationS, energyKcal: row.energyKcal,
                               avgHr: r.avg, maxHr: newMax, strain: newStrain, distanceM: row.distanceM,
-                              zonesJSON: row.zonesJSON, notes: row.notes, steps: row.steps)
+                              zonesJSON: row.zonesJSON, notes: row.notes, steps: row.steps,
+                              strengthJSON: row.strengthJSON)
         }
     }
 
@@ -2679,7 +2696,7 @@ final class Repository: ObservableObject {
                                 durationS: row.durationS, energyKcal: row.energyKcal,
                                 avgHr: row.avgHr, maxHr: row.maxHr, strain: row.strain,
                                 distanceM: row.distanceM, zonesJSON: row.zonesJSON, notes: row.notes,
-                                steps: row.steps)
+                                steps: row.steps, strengthJSON: row.strengthJSON)
         _ = try? await store.upsertWorkouts([manual], deviceId: deviceId)
         _ = try? await store.deleteWorkouts(deviceId: computedDeviceId, sport: "detected",
                                             from: row.startTs, to: row.startTs)

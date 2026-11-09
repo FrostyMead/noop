@@ -53,7 +53,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         V18AuxSampleEntity::class,
         AppleStepHour::class,
     ],
-    version = 33,
+    version = 34,
     // #775: ON so Room's KSP processor writes the generated schema (every table's exact `CREATE TABLE`,
     // columns in declaration order with affinity/NOT NULL/default, PK and indices) as JSON. That export
     // is what lets a plain JVM test — no device, no Robolectric — read Android's REAL schema and compare
@@ -70,7 +70,7 @@ abstract class WhoopDatabase : RoomDatabase() {
         const val DB_NAME = "noop_whoop.db"
         /** Room schema version — MUST equal the `@Database(version = …)` above. Surfaced in the backup
          *  manifest (#1410) so an export states its schema. Bump both together on a migration. */
-        const val SCHEMA_VERSION = 33
+        const val SCHEMA_VERSION = 34
 
         @Volatile
         private var instance: WhoopDatabase? = null
@@ -899,6 +899,41 @@ abstract class WhoopDatabase : RoomDatabase() {
             }
         }
 
+        /** v33 -> v34: nullable, versioned set-level strength payload on an existing workout. */
+        internal val STRENGTH_WORKOUT_MIGRATION_SQL: List<String> = listOf(
+            "ALTER TABLE `workout` ADD COLUMN `strengthJSON` TEXT",
+        )
+
+        /**
+         * The statements v33 -> v34 must run, given which of the two v33-era columns the store already has.
+         *
+         * The PPG burst index and the strength payload were both written as a v32 -> v33 step on separate
+         * branches. The burst index kept 32 -> 33; the strength payload became 33 -> 34. A store that ran a
+         * build carrying the strength step at v33 already has `strengthJSON` but not `burstIndex`, so this
+         * adds whichever is missing instead of assuming the history. Additive only. Pure, so the rule is
+         * tested without a database.
+         */
+        internal fun migration33To34Statements(hasStrengthJson: Boolean, hasBurstIndex: Boolean): List<String> =
+            (if (hasStrengthJson) emptyList() else STRENGTH_WORKOUT_MIGRATION_SQL) +
+                (if (hasBurstIndex) emptyList() else PPG_BURST_INDEX_MIGRATION_SQL)
+
+        internal val MIGRATION_33_34 = object : Migration(33, 34) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                fun hasColumn(table: String, column: String): Boolean =
+                    db.query("PRAGMA table_info(`$table`)").use { c ->
+                        val name = c.getColumnIndex("name")
+                        var found = false
+                        while (!found && c.moveToNext()) found = c.getString(name) == column
+                        found
+                    }
+                val statements = migration33To34Statements(
+                    hasStrengthJson = hasColumn("workout", "strengthJSON"),
+                    hasBurstIndex = hasColumn("ppgWaveformSample", "burstIndex"),
+                )
+                for (stmt in statements) db.execSQL(stmt)
+            }
+        }
+
         /**
          * Every migration the builder registers, as a VALUE rather than an argument list.
          *
@@ -924,7 +959,7 @@ abstract class WhoopDatabase : RoomDatabase() {
             MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
             MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26,
             MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30,
-            MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33,
+            MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34,
         )
 
 

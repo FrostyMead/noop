@@ -6,11 +6,9 @@ import com.noop.R
 
 // MARK: - Reorderable Today sections (#today-layout)
 //
-// The Today screen's sections — the Charge/Effort/Rest hero, the Start-session entry, Synthesis, Key
-// Metrics, Workouts, Heart Rate, Recovery Vitals, Your Cards — rendered in one fixed order. This lets the
-// user REORDER or HIDE them, with the default being the original order so nothing changes for anyone who
-// never customizes Today. Display-only — no metric is computed or stored differently; this only decides
-// which already-built sections render and in what sequence.
+// Android's daily overview places scores, a short insight, the expandable Health Monitor and sleep
+// first. Saved layouts retain their explicit order and hidden sections. These preferences affect only
+// presentation; no metric is computed or stored differently.
 //
 // Stored as a single comma-joined string of section keys in SharedPreferences ("today.sectionOrder"), the
 // same mechanism KeyMetricPrefs/DashboardCards use. Mirrors the macOS TodayLayoutPrefs.swift +
@@ -19,8 +17,8 @@ import com.noop.R
 // visibility lives separately in "today.hiddenSections", byte-identical to the Apple-platform key.
 
 /**
- * One reorderable Today section. The [raw] is the stable persisted identifier — keep it byte-identical to
- * the macOS `TodaySection` enum so a backup/restore reads the same layout on either OS.
+ * One reorderable Today section. Existing [raw] identifiers match the Apple platform; Android's new
+ * sleep summary is ignored as an unknown presentation key by older/Apple layout decoders.
  */
 enum class TodaySection(val raw: String, @StringRes val titleRes: Int) {
     HERO("hero", R.string.today_section_hero),
@@ -29,7 +27,8 @@ enum class TodaySection(val raw: String, @StringRes val titleRes: Int) {
     KEY_METRICS("keyMetrics", R.string.today_section_key_metrics),
     WORKOUTS("workouts", R.string.today_section_workouts),
     HEART_RATE("heartRate", R.string.today_section_heart_rate),
-    RECOVERY_VITALS("recoveryVitals", R.string.today_section_recovery_vitals),
+    RECOVERY_VITALS("recoveryVitals", R.string.overview_health_monitor),
+    SLEEP_SUMMARY("sleepSummary", R.string.overview_sleep_summary),
     YOUR_CARDS("yourCards", R.string.today_section_your_cards),
     MENSTRUAL_CYCLE("menstrualCycle", R.string.today_section_menstrual_cycle),
     JOURNAL("journal", R.string.today_section_journal),
@@ -42,11 +41,10 @@ enum class TodaySection(val raw: String, @StringRes val titleRes: Int) {
     companion object {
         fun fromRaw(raw: String?): TodaySection? = entries.firstOrNull { it.raw == raw }
 
-        /** The original, hard-coded section order — the default when the layout isn't customised. The
-         *  journal widget (#656) is last by default, where it was first added, above the data-sources card. */
+        /** Android overview order. Saved layouts retain their explicit ordering and visibility. */
         val defaultOrder: List<TodaySection> = listOf(
-            HERO, LIVE_SESSION, SYNTHESIS, KEY_METRICS, WORKOUTS, HEART_RATE, RECOVERY_VITALS, YOUR_CARDS,
-            MENSTRUAL_CYCLE, JOURNAL, ADDED_CARDS,
+            HERO, SYNTHESIS, RECOVERY_VITALS, SLEEP_SUMMARY, LIVE_SESSION, WORKOUTS,
+            KEY_METRICS, HEART_RATE, YOUR_CARDS, MENSTRUAL_CYCLE, JOURNAL, ADDED_CARDS,
         )
     }
 }
@@ -70,9 +68,22 @@ object TodayLayoutPrefs {
         NoopPrefs.of(context).edit().putString(KEY_ORDER, encode(sections)).apply()
     }
 
-    /** The explicitly hidden sections in their editor order. Empty/unset means every section is visible. */
+    /** The compact insight and expandable Health Monitor are visible on an uncustomised overview. */
+    val defaultHidden: List<TodaySection> = emptyList()
+
+    /**
+     * The hidden set for a stored value, applying [defaultHidden] only when NOTHING was ever saved.
+     *
+     * The null/empty distinction is what makes a shipped default safe to change: a null means the user has
+     * never opened Customise, so they get the current default; an empty string is an explicit "hide
+     * nothing" they chose, and must be honoured rather than silently re-hiding a section they un-hid.
+     */
+    fun decodeHiddenOrDefault(raw: String?): List<TodaySection> =
+        if (raw == null) defaultHidden else decodeHidden(raw)
+
+    /** The explicitly hidden sections in their editor order, or [defaultHidden] on a fresh install. */
     fun hidden(context: Context): List<TodaySection> =
-        decodeHidden(NoopPrefs.of(context).getString(KEY_HIDDEN, null))
+        decodeHiddenOrDefault(NoopPrefs.of(context).getString(KEY_HIDDEN, null))
 
     /** Persist the explicit reversible hidden list. */
     fun setHidden(context: Context, sections: List<TodaySection>) {
@@ -128,4 +139,50 @@ object TodayLayoutPrefs {
         val hidden = decodeHidden(hiddenRaw).toSet()
         return decodeOrder(orderRaw).filterNot { it in hidden }
     }
+}
+
+/**
+ * The Key Metrics tiles worth showing on Today: the user's chosen tiles, minus any metric the visible
+ * score rings ([TodaySection.HERO]) or health monitor ([TodaySection.RECOVERY_VITALS]) already show.
+ * Hiding either section brings its metrics back as tiles. Presentation only; nothing is stored.
+ */
+internal fun todayKeyMetricsShown(
+    enabled: List<KeyMetric>,
+    order: List<TodaySection>,
+    hidden: List<TodaySection>,
+): List<KeyMetric> {
+    fun shown(section: TodaySection) = section in order && section !in hidden
+    val covered = buildSet {
+        if (shown(TodaySection.HERO)) addAll(listOf(KeyMetric.CHARGE, KeyMetric.EFFORT, KeyMetric.REST))
+        if (shown(TodaySection.RECOVERY_VITALS)) addAll(listOf(KeyMetric.HRV, KeyMetric.RESTING_HR, KeyMetric.RESPIRATORY))
+    }
+    return enabled.filterNot { it in covered }
+}
+
+/**
+ * The "Your cards" rows worth showing on Today: the user's chosen cards, minus any metric another
+ * visible section already shows — the health monitor's three vitals, the sleep summary's night, and any
+ * metric already a Key Metrics tile ([keyMetricsShown]). Presentation only; the saved selection is kept.
+ */
+internal fun todayDashboardCardsShown(
+    cards: List<DashboardCard>,
+    keyMetricsShown: List<KeyMetric>,
+    order: List<TodaySection>,
+    hidden: List<TodaySection>,
+): List<DashboardCard> {
+    fun shown(section: TodaySection) = section in order && section !in hidden
+    val covered = buildSet {
+        if (shown(TodaySection.RECOVERY_VITALS)) addAll(listOf(DashboardCard.HRV, DashboardCard.RESTING_HR, DashboardCard.RESPIRATORY))
+        if (shown(TodaySection.SLEEP_SUMMARY)) add(DashboardCard.SLEEP)
+        if (shown(TodaySection.KEY_METRICS)) {
+            val tiles = keyMetricsShown.toSet()
+            if (KeyMetric.BLOOD_OXYGEN in tiles) add(DashboardCard.BLOOD_OXYGEN)
+            if (KeyMetric.STEPS in tiles) add(DashboardCard.STEPS)
+            if (KeyMetric.CALORIES in tiles) add(DashboardCard.CALORIES)
+            if (KeyMetric.HRV in tiles) add(DashboardCard.HRV)
+            if (KeyMetric.RESTING_HR in tiles) add(DashboardCard.RESTING_HR)
+            if (KeyMetric.RESPIRATORY in tiles) add(DashboardCard.RESPIRATORY)
+        }
+    }
+    return cards.filterNot { it in covered }
 }

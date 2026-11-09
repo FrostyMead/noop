@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="overview_recovery">Erholung</string>
+    <string name="overview_sleep">Schlaf</string>
+    <string name="overview_percent">%1$d%%</string>
+    <string name="overview_out_of">Von %1$d</string>
+    <string name="overview_sleep_score">Schlafwert</string>
+    <string name="overview_sleep_pending">Benötigt eine aufgezeichnete Nacht</string>
+    <string name="overview_score_source">Werte von %1$s</string>
+    <string name="overview_daily_insight">Dein Tag auf einen Blick</string>
+    <string name="overview_health_monitor">Gesundheitsmonitor</string>
+    <string name="overview_monitor_empty">Warten auf nächtliche Messwerte</string>
+    <string name="overview_monitor_partial">Einige Messwerte fehlen</string>
+    <string name="overview_monitor_outside">Messwerte außerhalb ihres Referenzbereichs</string>
+    <string name="overview_monitor_personal">Alle 3 Werte in deinem üblichen Bereich</string>
+    <string name="overview_monitor_typical">Alle 3 Werte in den Referenzbereichen</string>
+    <string name="overview_in_personal">In deinem üblichen Bereich</string>
+    <string name="overview_out_personal">Außerhalb deines üblichen Bereichs</string>
+    <string name="overview_in_typical">Im typischen Bereich</string>
+    <string name="overview_out_typical">Außerhalb des typischen Bereichs</string>
+    <string name="overview_expanded">Ausgeklappt</string>
+    <string name="overview_collapsed">Eingeklappt</string>
+    <string name="overview_sleep_summary">Schlafübersicht</string>
+    <string name="overview_sleep_duration">%1$d Std. %2$d Min.</string>
+    <string name="overview_sleep_deep">Tief</string>
+    <string name="overview_sleep_rem">REM</string>
+    <string name="overview_sleep_light">Leicht</string>
+    <string name="overview_sleep_details">Tippen für Schlafdetails</string>
+    <string name="overview_stage_minutes">%1$s · %2$d Min.</string>
+    <string name="overview_connected">Armband verbunden</string>
+    <string name="overview_disconnected">Armband getrennt</string>
+    <string name="overview_minutes">%1$d Min.</string>
+    <string name="overview_insight_label">Einblick</string>
+    <string name="sleep_scene_in_bed">Zeit im Bett</string>
+    <string name="sleep_scene_asleep">Schlafdauer</string>
+    <string name="sleep_scene_performance">Schlafleistung</string>
+</resources>

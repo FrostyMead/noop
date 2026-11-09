@@ -84,7 +84,7 @@ fun CycleTrackerDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(Metrics.cornerSm))
+                        .clip(RoundedCornerShape(Metrics.cornerMd))
                         .background(Palette.surfaceInset)
                         .clickable {
                             DatePickerDialog(

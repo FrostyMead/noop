@@ -392,7 +392,7 @@ private fun PlotCard(points: List<RhythmScreener.PoincarePoint>) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(Metrics.chartHeight + 24.dp)
-                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(Metrics.cornerSm)),
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(Metrics.cornerMd)),
             ) {
                 ScenicHeroBackground(
                     modifier = Modifier.fillMaxSize(),

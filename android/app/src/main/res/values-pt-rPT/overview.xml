@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="overview_recovery">Recuperação</string>
+    <string name="overview_sleep">Sono</string>
+    <string name="overview_percent">%1$d%%</string>
+    <string name="overview_out_of">De %1$d</string>
+    <string name="overview_sleep_score">Pontuação do sono</string>
+    <string name="overview_sleep_pending">Requer uma noite registada</string>
+    <string name="overview_score_source">Pontuações de %1$s</string>
+    <string name="overview_daily_insight">O seu dia num relance</string>
+    <string name="overview_health_monitor">Monitor de saúde</string>
+    <string name="overview_monitor_empty">A aguardar leituras noturnas</string>
+    <string name="overview_monitor_partial">Algumas leituras estão indisponíveis</string>
+    <string name="overview_monitor_outside">Leituras fora do intervalo de referência</string>
+    <string name="overview_monitor_personal">As 3 leituras no seu intervalo habitual</string>
+    <string name="overview_monitor_typical">As 3 leituras nos intervalos de referência</string>
+    <string name="overview_in_personal">No seu intervalo habitual</string>
+    <string name="overview_out_personal">Fora do seu intervalo habitual</string>
+    <string name="overview_in_typical">No intervalo típico</string>
+    <string name="overview_out_typical">Fora do intervalo típico</string>
+    <string name="overview_expanded">Expandido</string>
+    <string name="overview_collapsed">Recolhido</string>
+    <string name="overview_sleep_summary">Resumo do sono</string>
+    <string name="overview_sleep_duration">%1$d h %2$d min</string>
+    <string name="overview_sleep_deep">Profundo</string>
+    <string name="overview_sleep_rem">REM</string>
+    <string name="overview_sleep_light">Leve</string>
+    <string name="overview_sleep_details">Toque para ver os detalhes do sono</string>
+    <string name="overview_stage_minutes">%1$s · %2$d min</string>
+    <string name="overview_connected">Pulseira ligada</string>
+    <string name="overview_disconnected">Pulseira desligada</string>
+    <string name="overview_minutes">%1$d min</string>
+    <string name="overview_insight_label">Resumo</string>
+    <string name="sleep_scene_in_bed">Tempo na cama</string>
+    <string name="sleep_scene_asleep">Tempo a dormir</string>
+    <string name="sleep_scene_performance">Desempenho do sono</string>
+</resources>

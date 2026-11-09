@@ -1802,7 +1802,7 @@ final class IntelligenceEngine: ObservableObject {
                                               durationS: s.durationS, energyKcal: s.caloriesKcal,
                                               avgHr: avgBpm, maxHr: s.peakHR,
                                               strain: s.strain, distanceM: nil,
-                                              zonesJSON: nil, notes: nil, steps: nil))
+                                              zonesJSON: nil, notes: nil, steps: nil, strengthJSON: nil))
                 if workoutsTraceActive {
                     diagnosticSink?(WorkoutsTrace.detectedBoutLine(
                         verdict: "persisted", durMin: durMin, avgBpm: avgBpm), .workouts)
@@ -2431,7 +2431,7 @@ final class IntelligenceEngine: ObservableObject {
                 startTs: row.startTs, endTs: row.endTs, sport: row.sport, source: row.source,
                 durationS: row.durationS, energyKcal: energyKcal, avgHr: s.avgHr, maxHr: s.maxHr,
                 strain: s.strain, distanceM: row.distanceM, zonesJSON: row.zonesJSON, notes: row.notes,
-                steps: row.steps))
+                steps: row.steps, strengthJSON: row.strengthJSON))
         }
         if !updated.isEmpty { _ = try? await store.upsertWorkouts(updated, deviceId: deviceId) }
     }

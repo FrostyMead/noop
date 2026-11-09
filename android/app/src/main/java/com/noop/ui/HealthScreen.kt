@@ -8,6 +8,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.Air
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Opacity
+import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -157,7 +163,7 @@ fun HealthScreen(
     // the theme canvas behind this screen's top region, full-bleed up behind the status bar via the
     // scaffold's topBackground plumbing, replacing the classic scene backdrop. Static (LiquidSkyStatic,
     // inside the helper) — never an animated sky behind a scrolling list. Gated on the shared "Day-cycle
-    // background" pref (default ON) exactly like Today; OFF passes null so the scaffold paints the flat
+    // background" pref (default OFF) exactly like Today; OFF passes null so the scaffold paints the flat
     // surface canvas instead.
     val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
     val skyBehindCards = remember { NoopPrefs.skyBehindCards(context) }
@@ -422,7 +428,7 @@ private fun RecordRow(
             Box(
                 modifier = Modifier
                     .size(34.dp)
-                    .clip(RoundedCornerShape(Metrics.cornerSm))
+                    .clip(RoundedCornerShape(Metrics.cornerMd))
                     .background(tint.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center,
             ) {
@@ -1004,7 +1010,7 @@ private fun FitnessAgeHero(
             // "How accurate is this?" affordance — toggles the readiness checklist below the hero.
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(Metrics.cornerSm))
+                    .clip(RoundedCornerShape(Metrics.cornerMd))
                     .liquidPress(howAccurateInteraction)
                     .clickable(
                         interactionSource = howAccurateInteraction,
@@ -1237,7 +1243,7 @@ fun VitalSignsScreen(vm: AppViewModel, onVitalClick: (String) -> Unit = {}) {
 // MARK: - Heart rate hero (live)
 
 @Composable
-private fun HeartRateSection(vm: AppViewModel, hrMax: Int) {
+internal fun HeartRateSection(vm: AppViewModel, hrMax: Int) {
     // PERF (#scroll-jank): collect the BLE live state + smoothed bpm HERE, in the HR hero leaf, instead
     // of receiving them from the screen body. Both tick ~1Hz; reading them at body scope recomposed the
     // whole Health screen on every heartbeat. Scoping the collection to this section confines the ~1Hz
@@ -1581,12 +1587,12 @@ private fun VitalsSection(
                             ) { onVitalClick(v.key) }
                             .semantics { contentDescription = v.accessibilityText },
                         vital = v,
-                        value = v.formattedValue ?: "—",
+                        // The pill reads best with the RANGE it was judged against; AS_OF callers keep
+                        // their reading-date line, falling back to the state wording either way.
                         caption = when (captionMode) {
-                            VitalCaptionMode.AS_OF -> v.asOfLabel ?: v.stateCaption
+                            VitalCaptionMode.AS_OF -> v.rangeCaption ?: v.asOfLabel ?: v.stateCaption
                             VitalCaptionMode.RANGE -> v.rangeCaption ?: v.stateCaption
                         },
-                        accent = v.accent,
                     )
                 }
                 // Pad an odd final row so the tile keeps half-width, matching the grid.
@@ -1609,47 +1615,86 @@ private fun VitalsSection(
 
 // MARK: - Vital model
 
+/** The glyph for a vital tile, by [Vital.key]. Falls back to a neutral chart mark for a new key. */
+private fun vitalIcon(key: String): ImageVector = when (key) {
+    "resp" -> Icons.Filled.Air
+    "spo2" -> Icons.Filled.WaterDrop
+    "spo2raw" -> Icons.Filled.Opacity
+    "rhr" -> Icons.Filled.FavoriteBorder
+    "hrv" -> Icons.Filled.MonitorHeart
+    "skin" -> Icons.Filled.Thermostat
+    else -> Icons.Filled.Insights
+}
+
+/** [Vital]'s banding as the design-system status the pill understands. */
+private fun Vital.statusPillState(): MetricStatus = when (banding.band) {
+    VitalBands.Band.IN_RANGE -> MetricStatus.GOOD
+    VitalBands.Band.OUT_OF_RANGE -> MetricStatus.ATTENTION
+    VitalBands.Band.NO_DATA -> MetricStatus.UNKNOWN
+}
+
+/**
+ * One vital, as a WHOOP-style tile: glyph and name, a display-sized number with its unit set smaller
+ * beside it, the trail, and a status pill naming the band the value was judged against.
+ *
+ * Two changes from the tile this replaces, both about what the eye lands on first:
+ *
+ *  • The VALUE is now primary text, not the accent colour, and the unit is separated out at a smaller
+ *    size. Colouring the number by its own verdict made every in-range vital a different hue, so the
+ *    grid read as five unrelated colour worlds; the verdict moves to the pill, where one green tick per
+ *    tile says the same thing without repainting the data.
+ *  • The range moves from grey footnote text into a [VitalStatusPill]. "within 47 – 50" is the most
+ *    reassuring thing on the tile and it was the least visible part of it.
+ */
 @Composable
 private fun VitalTile(
     vital: Vital,
     modifier: Modifier = Modifier,
-    value: String = vital.formattedValue ?: "—",
     caption: String = vital.stateCaption,
-    accent: Color = vital.accent,
 ) {
-    // The tile borrows its accent as a faint card wash, so each vital reads as part of its colour
-    // world while staying legible on the deep blue-black — matching Today's StatTile.
-    NoopCard(modifier = modifier.height(Metrics.tileHeight), padding = Metrics.space14, tint = accent) {
+    NoopCard(modifier = modifier.height(Metrics.vitalTileHeight), padding = Metrics.space14) {
         Column {
-            Overline(vital.label)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space6)) {
+                Icon(
+                    vitalIcon(vital.key),
+                    contentDescription = null,
+                    tint = Palette.textSecondary,
+                    modifier = Modifier.size(Metrics.iconSmall),
+                )
+                Overline(vital.label, modifier = Modifier.weight(1f))
+            }
             Spacer(Modifier.weight(1f))
-            Text(
-                text = value,
-                style = NoopType.tileValueLarge,
-                color = accent,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Metrics.space4)) {
+                AutoSizeValue(
+                    text = vital.value?.let { vital.format(it) } ?: "—",
+                    style = NoopType.number(32f, weight = FontWeight.Bold),
+                    color = Palette.textPrimary,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (vital.value != null && vital.unit.isNotBlank()) {
+                    Text(
+                        vital.unit,
+                        style = NoopType.number(13f, weight = FontWeight.Medium),
+                        color = Palette.textSecondary,
+                        modifier = Modifier.padding(bottom = Metrics.space4),
+                        maxLines = 1,
+                    )
+                }
+            }
             // A metric-tinted sparkline trail with a glowing "now" end-cap, mirroring Today's tiles.
-            // Hidden below two points so a sparse vital shows the caption with no flat trail.
+            // Hidden below two points so a sparse vital shows the pill with no flat trail.
             if (vital.sparkline.size > 1) {
                 TileSparkline(
                     values = vital.sparkline,
                     color = vital.metricColor,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(20.dp)
+                        .height(18.dp)
                         .padding(top = Metrics.space4),
                 )
             }
-            Text(
-                text = caption,
-                style = NoopType.footnote,
-                color = Palette.textTertiary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = Metrics.space2),
-            )
+            Spacer(Modifier.height(Metrics.space8))
+            VitalStatusPill(text = caption, status = vital.statusPillState())
         }
     }
 }

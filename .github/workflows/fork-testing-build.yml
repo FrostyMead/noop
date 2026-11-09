@@ -71,12 +71,21 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/wrapper-validation@v5
       - uses: gradle/actions/setup-gradle@v5
-      # NOTE: both APKs are signed with the committed android/fork-debug.keystore via an explicit
-      # storeFile in the debug signingConfig (build.gradle.kts, injected by rebuild-staging.sh) — the
-      # release build falls back to the debug key when no keystore.properties is present. We do NOT
-      # copy it to ~/.android/debug.keystore — the runner ignores that path (ANDROID_USER_HOME points off
-      # $HOME) and would sign with a fresh random key, breaking sideloaded updates ("App not installed").
-      # -PstagingRelease gives the release APK a .staging app id so it installs beside the official app.
+      - name: Configure private Android signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: |
+          for value in KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            [ -n "${!value}" ] || { echo "::error::Missing Android signing secret: $value"; exit 1; }
+          done
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > private-release.keystore
+          printf 'storeFile=private-release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
+      # The debug APK uses the runner's ordinary debug key. The staging-release APK uses the fork
+      # owner's private key, so updates keep a stable identity without committing any signing secret.
       - name: Build debug + staging-release APKs
         run: ./gradlew assembleFullDebug assembleFullRelease -PstagingRelease
       - name: Version the filenames + attach

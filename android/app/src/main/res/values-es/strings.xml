@@ -2443,4 +2443,59 @@
     <string name="workout_delete_message">Esto detiene la grabación y descarta permanentemente el entrenamiento.</string>
     <string name="l10n_settings_screen_effort_exponential_scale">Esfuerzo: escala de intensidad exponencial</string>
     <string name="l10n_settings_screen_effort_exponential_scale_desc">Puntúa el Esfuerzo con una curva de intensidad exponencial (TRIMP de Banister) en lugar de las zonas de frecuencia cardíaca predeterminadas (Edwards). La opción predeterminada no cuenta nada por debajo de la mitad de tu reserva de frecuencia cardíaca, así que una hora de pesas —donde las series duras se compensan con los descansos— puede puntuar casi cero. La curva exponencial no tiene umbral y pondera mucho más los esfuerzos cortos e intensos. Vuelve a puntuar tu historial y ambas escalas alcanzan el mismo máximo. Desactivado por defecto.</string>
+    <string name="l10n_settings_screen_manage_bf58d17e">Gestionar</string>
+    <string name="today_action_open_workout">Abrir detalles del entrenamiento</string>
+    <!-- Workout detail page (full-screen session read). -->
+    <string name="workout_detail_avg_hr_label">FC media</string>
+    <string name="workout_detail_missing_title">Sesión no encontrada</string>
+    <string name="workout_detail_missing_body">Este entrenamiento ya no está en tu historial. Puede que se haya eliminado o se haya fusionado con otra sesión.</string>
+    <string name="workout_detail_back">Atrás</string>
+    <string name="workout_detail_activity_effort">Esfuerzo de la actividad</string>
+    <string name="workout_detail_sport_average">media de %1$s en este deporte</string>
+    <string name="workout_detail_heart_rate">Frecuencia cardiaca</string>
+    <string name="workout_detail_duration">Duración %1$s</string>
+    <string name="workout_detail_bpm">%1$d bpm</string>
+    <string name="workout_detail_bpm_unit">bpm</string>
+    <string name="workout_detail_zone_span">%1$d–%2$d BPM</string>
+    <string name="workout_detail_zone_span_open">%1$d+ BPM</string>
+    <string name="workout_detail_zone_span_below">Menos de %1$d BPM</string>
+    <string name="workout_detail_percent">%1$d%%</string>
+    <string name="workout_detail_zones_imported">De la importación de WHOOP</string>
+    <string name="workout_detail_zones_derived">De la FC de la pulsera</string>
+    <string name="workout_detail_zone_desc">Zona %1$d, %2$d por ciento, %3$s</string>
+    <string name="workout_detail_key_statistics">Estadísticas clave</string>
+    <string name="workout_detail_vs_sport_average">frente a la media de 30 días</string>
+    <string name="workout_detail_calories">Calorías</string>
+    <string name="workout_detail_cals">cal</string>
+    <string name="workout_detail_cals_delta">%1$d cal</string>
+    <string name="workout_detail_notes">Notas</string>
+    <!-- Sleep performance contributor rows. -->
+    <string name="sleep_contributor_hours_vs_needed">Horas frente a las necesarias</string>
+    <string name="sleep_contributor_consistency">Constancia del sueño</string>
+    <string name="sleep_contributor_efficiency">Eficiencia del sueño</string>
+    <string name="sleep_contributor_restorative">Sueño reparador</string>
+    <string name="sleep_contributor_legend">Anoche frente a tu media habitual</string>
+    <string name="sleep_contributor_desc">%1$s: %2$s, habitual %3$s</string>
+    <string name="sleep_contributor_desc_no_baseline">%1$s: %2$s</string>
+    <!-- Screen-reader labels that were previously hardcoded English. -->
+    <string name="a11y_quick_actions">Acciones rápidas</string>
+    <string name="a11y_calorie_heatmap">Mapa de calor de calorías activas, últimas 13 semanas</string>
+    <string name="a11y_model_capability_row">%1$s – WHOOP 4.0: %2$s; 5.0/MG: %3$s</string>
+    <!-- Charge calendar (month-grid day picker). -->
+    <string name="calendar_previous_month">Mes anterior</string>
+    <string name="calendar_next_month">Mes siguiente</string>
+    <string name="calendar_legend_title">Carga</string>
+    <string name="calendar_legend_low">Baja</string>
+    <string name="calendar_legend_high">Alta</string>
+    <string name="calendar_day_charge_desc">%1$s, carga %2$d por ciento</string>
+    <string name="calendar_day_no_charge_desc">%1$s, sin carga registrada</string>
+    <!-- Today activity list: the night as its own row. -->
+    <string name="today_activity_sleep">Sueño</string>
+    <string name="today_action_open_sleep">Abrir detalles del sueño</string>
+    <!-- Start-a-workout picker: tabs and list chrome. -->
+    <string name="workout_start_tab_activity">Actividad</string>
+    <string name="workout_start_tab_recovery">Recuperación</string>
+    <string name="workout_start_recent">Recientes</string>
+    <string name="workout_start_all_activities">Todas las actividades</string>
+    <string name="workout_start_no_match">Ninguna actividad coincide con esa búsqueda.</string>
 </resources>

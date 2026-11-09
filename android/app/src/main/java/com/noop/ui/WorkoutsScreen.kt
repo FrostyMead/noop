@@ -1,6 +1,7 @@
 package com.noop.ui
 
 import com.noop.R
+import com.noop.data.StrengthWorkout
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -159,7 +160,7 @@ import kotlin.math.roundToInt
  * an empty window auto-widens to the next larger range, exactly like the macOS screen.
  */
 @Composable
-fun WorkoutsScreen(vm: AppViewModel) {
+fun WorkoutsScreen(vm: AppViewModel, onOpenDetail: (WorkoutRow) -> Unit = {}) {
     // The ViewModel owns the loaded rows now (ALL sources incl. detected, dismissed-filtered) so a
     // mutation (add / edit / relabel / dismiss / delete) republishes the list and the screen updates.
     val allRows by vm.workouts.collectAsState()
@@ -173,6 +174,7 @@ fun WorkoutsScreen(vm: AppViewModel) {
 
     // The manual add/edit dialog target: Some(null) = add, Some(row) = edit, null = closed.
     var dialog by remember { mutableStateOf<DialogTarget?>(null) }
+    var strengthDialog by remember { mutableStateOf<DialogTarget?>(null) }
 
     // #64: filters beyond the time range — sport (null = all), source class (null = all), free-text
     // search over the displayed sport. The pure WorkoutFilter applies them AFTER the window cut.
@@ -276,7 +278,11 @@ fun WorkoutsScreen(vm: AppViewModel) {
         // Start (or stop) a workout right here, not only on Live — mirrors the Live control (#115).
         // Start + Add sit side-by-side as an action row when a strap is bonded (EXP-018 parity).
         item {
-        WorkoutStartSection(vm, onAdd = { dialog = DialogTarget(null) })
+        WorkoutStartSection(
+            vm,
+            onAdd = { dialog = DialogTarget(null) },
+            onStrength = { strengthDialog = DialogTarget(null) },
+        )
         }
 
         if (allRows.isEmpty()) {
@@ -322,8 +328,8 @@ fun WorkoutsScreen(vm: AppViewModel) {
             }
             item {
             SessionsSection(
-                vm = vm,
                 rows = windowRows,
+                onOpenDetail = onOpenDetail,
                 selectionMode = selectionMode,
                 selectedKeys = selectedKeys,
                 onToggleSelectMode = {
@@ -347,7 +353,11 @@ fun WorkoutsScreen(vm: AppViewModel) {
                     selectionMode = false; selectedKeys = emptySet()
                 },
                 onCancelSelect = { selectionMode = false; selectedKeys = emptySet() },
-                onEdit = { editRow, isCopy -> dialog = DialogTarget(editRow, isCopy) },
+                onEdit = { editRow, isCopy ->
+                    val target = DialogTarget(editRow, isCopy)
+                    if (StrengthWorkout.decode(editRow.strengthJSON) != null) strengthDialog = target
+                    else dialog = target
+                },
                 onRelabel = { row, sport ->
                     vm.relabelDetected(row, sport)
                     pendingNoteSport = WorkoutEditing.displaySport(sport)
@@ -380,6 +390,25 @@ fun WorkoutsScreen(vm: AppViewModel) {
                 vm.saveManualWorkout(row, replacing)
                 pendingNoteSport = WorkoutEditing.displaySport(row.sport)
                 dialog = null
+            },
+        )
+    }
+
+    strengthDialog?.let { target ->
+        StrengthWorkoutDialog(
+            editing = target.editing,
+            isCopy = target.isCopy,
+            historicalWorkouts = allRows.mapNotNull { row ->
+                val editing = target.editing
+                if (!target.isCopy && editing != null &&
+                    row.startTs == editing.startTs && row.sport == editing.sport
+                ) null else StrengthWorkout.decode(row.strengthJSON)
+            },
+            onDismiss = { strengthDialog = null },
+            onSave = { row, replacing ->
+                vm.saveManualWorkout(row, replacing)
+                pendingNoteSport = WorkoutEditing.displaySport(row.sport)
+                strengthDialog = null
             },
         )
     }
@@ -877,7 +906,7 @@ private fun CalorieHeatmapSection(recentDays: List<com.noop.data.DailyMetric>) {
                     Modifier
                         .fillMaxWidth()
                         .height(cell * 7 + gap * 6 + topInset)
-                        .semantics { contentDescription = "Active-calorie heatmap, last 13 weeks" },
+                        .semantics { contentDescription = uiString(R.string.a11y_calorie_heatmap) },
                 ) {
                     val gapPx = gap.toPx()
                     val cellPx = cell.toPx()
@@ -1173,7 +1202,6 @@ private fun ZoneStat(zone: Int, minutes: Double, total: Double, modifier: Modifi
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SessionsSection(
-    vm: AppViewModel,
     rows: List<WorkoutRow>,
     selectionMode: Boolean,
     selectedKeys: Set<String>,
@@ -1186,8 +1214,8 @@ private fun SessionsSection(
     onRelabel: (WorkoutRow, String) -> Unit,
     onDismiss: (WorkoutRow) -> Unit,
     onDelete: (WorkoutRow) -> Unit,
+    onOpenDetail: (WorkoutRow) -> Unit,
 ) {
-    var selectedRow by remember { mutableStateOf<WorkoutRow?>(null) }
 
     // #797: paginate the All-Sessions list. This card lives inside ONE LazyColumn item, so every session
     // row composes eagerly: a years-deep WHOOP/Apple import (hundreds to thousands of bouts) built the
@@ -1225,7 +1253,7 @@ private fun SessionsSection(
                         onRelabel = onRelabel,
                         onDismiss = onDismiss,
                         onDelete = onDelete,
-                        onClick = { selectedRow = it },
+                        onClick = { onOpenDetail(it) },
                     )
                     if (idx != visible.lastIndex) FullDivider(alpha = 0.5f)
                 }
@@ -1252,9 +1280,6 @@ private fun SessionsSection(
         }
     }
 
-    selectedRow?.let { row ->
-        WorkoutDetailSheet(vm = vm, row = row, onDismiss = { selectedRow = null })
-    }
 }
 
 /** #64: the "Select" pill in the All-Sessions header — toggles multi-select mode. */
@@ -1481,208 +1506,10 @@ private fun SessionRow(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun WorkoutDetailSheet(vm: AppViewModel, row: WorkoutRow, onDismiss: () -> Unit) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    // Per-window reads (#410): the HR curve (downsampled bucket means) and the HR-zone split. Zones
-    // prefer the imported per-workout percentages (a WHOOP-computed split); only when the row carries
-    // none do we derive zone-minutes from the strap's own raw HR — so we never overwrite a real
-    // imported split with an on-device approximation.
-    var hrCurve by remember(row.startTs) { mutableStateOf<List<Double>>(emptyList()) }
-    var zoneMinutes by remember(row.startTs) { mutableStateOf<List<Double>?>(null) }
-    var zonesFromImport by remember(row.startTs) { mutableStateOf(false) }
-    var heartRateRecovery by remember(row.startTs) { mutableStateOf<HeartRateRecovery.Result?>(null) }
-    // Steps for an on-foot sport (#398): the strap's own counter over the window, computed at display time
-    // so it "fills in after sync". null for non-foot sports or when no strap counter covers the window.
-    var steps by remember(row.startTs) { mutableStateOf<Int?>(null) }
-    LaunchedEffect(row.startTs, row.endTs) {
-        hrCurve = vm.workoutHrBuckets(row.startTs, row.endTs, row.source, row.deviceId).map { it.avgBpm }
-        steps = if (WorkoutSport.isOnFoot(row.sport)) vm.workoutSteps(row.startTs, row.endTs) else null
-        val imported = parseZonePercents(row.zonesJSON)
-        if (imported != null) {
-            val durMin = (row.durationS ?: (row.endTs - row.startTs).toDouble()) / 60.0
-            if (durMin > 0.0) {
-                zoneMinutes = imported.map { durMin * it / 100.0 }
-                zonesFromImport = true
-            }
-        }
-        if (zoneMinutes == null) {
-            zoneMinutes = vm.workoutZoneMinutes(row.startTs, row.endTs, row.source, row.deviceId)
-            zonesFromImport = false
-        }
-        heartRateRecovery = vm.workoutHeartRateRecovery(row.startTs, row.endTs, row.source, row.deviceId)
-    }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = Palette.surfaceOverlay,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    sportIcon(row.sport),
-                    contentDescription = null,
-                    tint = Palette.effortColor,
-                    modifier = Modifier.size(22.dp),
-                )
-                Spacer(Modifier.width(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(WorkoutEditing.displaySport(row.sport), style = NoopType.title2, color = Palette.textPrimary)
-                    Text(dateLabel(row.startTs), style = NoopType.footnote, color = Palette.textTertiary)
-                }
-                val (srcLabel, srcTint) = row.sourceBadge
-                SourceBadge(srcLabel, tint = srcTint)
-            }
-            CardDivider()
-            DetailRow("Time", timeRangeLabel(row.startTs, row.endTs))
-            DetailRow("Duration", durationLabel(row.durationS))
-            if (row.avgHr != null) DetailRow("Avg HR", "${row.avgHr} bpm")
-            if (row.maxHr != null) DetailRow("Max HR", "${row.maxHr} bpm")
-            if (row.energyKcal != null) DetailRow("Calories", "${grouped(row.energyKcal)} kcal")
-            if (row.distanceM != null) {
-                val unitSystem = UnitPrefs.system(LocalContext.current)
-                DetailRow("Distance", UnitFormatter.distanceFromKilometers(row.distanceM / 1000.0, unitSystem))
-            }
-            steps?.let { DetailRow("Steps", "${grouped(it.toDouble())} steps") }  // #398, on-foot sports
-            if (!row.notes.isNullOrBlank()) DetailRow("Notes", row.notes)
-
-            // Export the recorded GPS route as a GPX/FIT file (Strava / Garmin Connect / any GPS app).
-            // Only when a route with a drawable path was recorded; the file is built on-device and shared.
-            row.routePolyline?.let { poly ->
-                val track = remember(poly) { RouteMath.decode(poly) }
-                if (track.size >= 2) {
-                    val exportCtx = LocalContext.current
-                    val exportScope = rememberCoroutineScope()
-                    CardDivider()
-                    Text("Export route", style = NoopType.subhead, color = Palette.textPrimary)
-                    Text(
-                        "Save this GPS route as a file to import into Strava, Garmin Connect, or another app. " +
-                            "Built on your phone — nothing is uploaded until you choose to share it.",
-                        style = NoopType.footnote,
-                        color = Palette.textTertiary,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        NoopButton(
-                            text = "GPX",
-                            kind = NoopButtonKind.Secondary,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                exportScope.launch {
-                                    RouteExportShare.share(exportCtx, RouteExport.Format.GPX, track, row)
-                                }
-                            },
-                        )
-                        NoopButton(
-                            text = "FIT",
-                            kind = NoopButtonKind.Secondary,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                exportScope.launch {
-                                    RouteExportShare.share(exportCtx, RouteExport.Format.FIT, track, row)
-                                }
-                            },
-                        )
-                    }
-                }
-            }
-
-            // #796 - per-session Effort contribution. The session's captured strain re-homed from a plain
-            // value row into a prominent Effort-amber card (the big count-up value + the "This session"
-            // overline + an explainer), mirroring the iOS WorkoutDetailView.effortCard. Gated on a captured
-            // strain - an imported session with none simply omits the card. The display honours the Effort
-            // scale toggle (#268), so a WHOOP-axis user sees the rescaled 0–21 value; the stored value is
-            // unchanged. Presentation only - no new data is computed here.
-            row.strain?.let { strain ->
-                val effortScale = UnitPrefs.effortScale(LocalContext.current)
-                CardDivider()
-                SessionEffortCard(strain = strain, effortScale = effortScale)
-            }
-
-            // HR curve over the session window (#410). A faint baseline shows under 2 points.
-            if (hrCurve.size > 1) {
-                CardDivider()
-                Overline("Heart rate")
-                LineChart(
-                    values = hrCurve,
-                    modifier = Modifier.height(Metrics.compactChartHeight),
-                    color = Palette.effortColor,
-                    fill = true,
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    val lo = hrCurve.minOrNull()?.roundToInt() ?: 0
-                    val hi = hrCurve.maxOrNull()?.roundToInt() ?: 0
-                    MiniStat("Avg", row.avgHr?.let { "$it bpm" } ?: "–", Modifier.weight(1f))
-                    MiniStat("Peak", (row.maxHr ?: hi).let { "$it bpm" }, Modifier.weight(1f))
-                    MiniStat("Low", "$lo bpm", Modifier.weight(1f))
-                }
-                // #18: the Avg HR shown above can be EDITED on the manual sheet while the graph, zones and
-                // Effort stay from the recorded session (preservingCaptured keeps the captured strain/zones).
-                // When the typed average disagrees materially with this trace's own mean AND the row carries
-                // that captured strain/zones, say so plainly. We do NOT re-score from the typed number.
-                // Parity with macOS WorkoutDetailView.avgHrEditedDisclosure.
-                val traceMean = hrCurve.sum() / hrCurve.size
-                val captured = row.strain != null || !row.zonesJSON.isNullOrEmpty()
-                if (captured && row.avgHr != null && kotlin.math.abs(row.avgHr - traceMean) > 3.0) {
-                    Text(
-                        uiString(R.string.l10n_workouts_screen_the_average_above_was_edited_the_0a7881f0),
-                        style = NoopType.footnote,
-                        color = Palette.textTertiary,
-                    )
-                }
-            }
-
-            // HR-zone split — imported percentages when present, else derived from strap HR (#410).
-            zoneMinutes?.let { z ->
-                val total = z.sum()
-                if (total > 0.0) {
-                    CardDivider()
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Overline("HR zones", modifier = Modifier.weight(1f))
-                        Text(
-                            if (zonesFromImport) "Whoop import" else "From strap HR",
-                            style = NoopType.footnote,
-                            color = Palette.textTertiary,
-                        )
-                    }
-                    SegmentBar(
-                        segments = z.mapIndexed { i, m -> Palette.hrZoneColor(i + 1) to (m / total).toFloat() },
-                        modifier = Modifier.fillMaxWidth(),
-                        height = 24.dp,
-                    )
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        z.forEachIndexed { i, m -> ZoneStat(i + 1, m, total, Modifier.weight(1f)) }
-                    }
-                    Text(
-                        if (zonesFromImport) "WHOOP's imported per-zone split for this session."
-                        else "Time in each %HRmax zone, derived from the strap's heart rate over this window (approximate).",
-                        style = NoopType.footnote,
-                        color = Palette.textTertiary,
-                    )
-                }
-            }
-
-            heartRateRecovery?.let {
-                CardDivider()
-                HeartRateRecoveryCard(it)
-            }
-        }
-    }
-}
-
 /** Per-workout HRR readout (#516). Values are signed bpm changes from the exercise-end HR; missing
  *  minute windows remain dashes rather than being interpolated across a strap disconnect. */
 @Composable
-private fun HeartRateRecoveryCard(result: HeartRateRecovery.Result) {
+internal fun HeartRateRecoveryCard(result: HeartRateRecovery.Result) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionHeader(
             title = uiString(R.string.l10n_workouts_screen_heart_rate_recovery_516),
@@ -1867,10 +1694,15 @@ private fun RecoveryTrendChart(
  * its scale caption (Effort 0–100 or strain 0–21), and a one-line explainer. Mirrors the iOS
  * WorkoutDetailView.effortCard: same colour world, same count-up, same copy. [strain] is the stored
  * 0–100 Effort value; [effortScale] only changes how it is DISPLAYED, never the stored number.
+ *
+ * [baselineStrain] is the same sport's recent mean on the SAME stored 0–100 axis (null when too few
+ * prior sessions exist to mean anything). When present the card adds a direction arrow and the baseline
+ * line, so the number is read against this person's own history rather than in isolation.
  */
 @Composable
-private fun SessionEffortCard(strain: Double, effortScale: EffortScale) {
+internal fun SessionEffortCard(strain: Double, effortScale: EffortScale, baselineStrain: Double? = null) {
     val shown = UnitFormatter.effortValue(strain, effortScale)
+    val baselineShown = baselineStrain?.let { UnitFormatter.effortValue(it, effortScale) }
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         SectionHeader("Effort", overline = "This session")
         NoopCard(tint = Palette.effortColor) {
@@ -1887,17 +1719,46 @@ private fun SessionEffortCard(strain: Double, effortScale: EffortScale) {
                                 " scale."
                     },
                 ) {
-                    CountUpText(
-                        value = shown,
-                        format = { oneDecimal(it) },
-                        style = NoopType.number(34f),
-                        color = Palette.effortBright,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
+                    ) {
+                        CountUpText(
+                            value = shown,
+                            format = { oneDecimal(it) },
+                            style = NoopType.number(34f),
+                            color = Palette.effortBright,
+                        )
+                        // The direction against this sport's own recent average, when one exists. Effort is
+                        // neutral - a harder session is not "worse" - so the arrow reads as information and
+                        // the tint follows "more effort is the positive direction".
+                        if (baselineShown != null) {
+                            Text(
+                                when {
+                                    shown > baselineShown + 0.05 -> "▲"
+                                    shown < baselineShown - 0.05 -> "▼"
+                                    else -> "●"
+                                },
+                                style = NoopType.number(10f, weight = FontWeight.Bold),
+                                color = metricDirectionTint(
+                                    metricDirection(shown, baselineShown, epsilon = 0.05),
+                                    higherIsBetter = true,
+                                ),
+                            )
+                        }
+                    }
                     Text(
                         if (effortScale == EffortScale.WHOOP) "strain (0-21)" else "Effort (0-100)",
                         style = NoopType.footnote,
                         color = Palette.textTertiary,
                     )
+                    if (baselineShown != null) {
+                        Text(
+                            uiString(R.string.workout_detail_sport_average, oneDecimal(baselineShown)),
+                            style = NoopType.captionNumber,
+                            color = Palette.textTertiary,
+                        )
+                    }
                 }
                 Text(
                     uiString(R.string.l10n_workouts_screen_this_session_s_contribution_to_the_fe40ab3d),
@@ -1911,21 +1772,52 @@ private fun SessionEffortCard(strain: Double, effortScale: EffortScale) {
 }
 
 @Composable
-private fun DetailRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Overline(label)
-        Text(
-            value,
-            style = NoopType.body,
-            color = Palette.textPrimary,
-            maxLines = 3,
-            textAlign = TextAlign.End,
-            modifier = Modifier.padding(start = 16.dp),
-        )
+internal fun StrengthDetailCard(strength: StrengthWorkout, unitSystem: UnitSystem) {
+    val imperial = unitSystem == UnitSystem.IMPERIAL
+    fun load(kg: Double): String {
+        val value = kg * if (imperial) 2.204_622_621_8 else 1.0
+        val number = if (kotlin.math.abs(value - value.roundToInt()) < 0.005) value.roundToInt().toString()
+        else String.format(Locale.US, "%.1f", value)
+        return "$number ${if (imperial) "lb" else "kg"}"
+    }
+    CardDivider()
+    Text(uiString(R.string.sw_strength_log), style = NoopType.subhead, color = Palette.textPrimary)
+    NoopCard {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                DetailStrengthStat("Exercises", strength.exercises.size.toString(), Modifier.weight(1f))
+                DetailStrengthStat("Working sets", strength.workingSetCount.toString(), Modifier.weight(1f))
+                DetailStrengthStat("Reps", strength.totalReps.toString(), Modifier.weight(1f))
+                DetailStrengthStat("Volume", load(strength.volumeLoadKg), Modifier.weight(1f))
+            }
+            CardDivider()
+            strength.exercises.forEach { exercise ->
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(exercise.name, style = NoopType.body, color = Palette.textPrimary)
+                    Text(
+                        exercise.sets.mapIndexed { index, set ->
+                            val setLoad = set.weightKg?.let(::load) ?: "bodyweight"
+                            "${index + 1}: ${set.reps} × $setLoad${if (set.isWarmup) " · warm-up" else ""}"
+                        }.joinToString("   "),
+                        style = NoopType.footnote,
+                        color = Palette.textSecondary,
+                    )
+                }
+            }
+            Text(
+                uiString(R.string.sw_volume_note_detail),
+                style = NoopType.footnote,
+                color = Palette.textTertiary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DetailStrengthStat(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(label, style = NoopType.overline, color = Palette.textTertiary)
+        Text(value, style = NoopType.captionNumber, color = Palette.textPrimary)
     }
 }
 
@@ -2324,7 +2216,7 @@ private fun workoutFieldColors() = OutlinedTextFieldDefaults.colors(
 // MARK: - Dividers
 
 @Composable
-private fun CardDivider() {
+internal fun CardDivider() {
     Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Palette.hairline))
 }
 
@@ -2484,7 +2376,7 @@ internal fun zoneSummary(rows: List<WorkoutRow>): ZoneSummary? {
  * likewise short for "Apple Health"); Data Sources / Today spell out "Health Connect". Tints match
  * those screens: WHOOP accent green, Apple cyan, Health Connect purple.
  */
-private val WorkoutRow.sourceBadge: Pair<String, Color>
+internal val WorkoutRow.sourceBadge: Pair<String, Color>
     get() = when (WorkoutEditing.classify(source)) {
         // Detected (on-device auto-detector) is honestly labelled so a duplicate is recognisable +
         // removable (#107); manual = user-logged. Both classify on `source` BEFORE the import labels.
@@ -2516,7 +2408,7 @@ private fun dateLabel(ts: Long): String = dateFmt.format(Instant.ofEpochSecond(t
 private fun timeLabel(ts: Long): String = timeFmt.format(Instant.ofEpochSecond(ts))
 
 /** Session span "HH:mm–HH:mm"; start-only when the end isn't after the start (#157). */
-private fun timeRangeLabel(startTs: Long, endTs: Long): String =
+internal fun timeRangeLabel(startTs: Long, endTs: Long): String =
     if (endTs > startTs) "${timeLabel(startTs)} - ${timeLabel(endTs)}" else timeLabel(startTs)
 
 private fun durationLabel(s: Double?): String {

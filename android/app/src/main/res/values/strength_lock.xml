@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strength workout, app lock and activity export copy (moved out of the Kotlin sources). -->
+<resources>
+    <string name="lock_title">NOOP is locked</string>
+    <string name="lock_body">Unlock with your fingerprint, face, or phone screen lock. Bluetooth collection can continue while this screen is locked.</string>
+    <string name="lock_unlock">Unlock</string>
+    <string name="lock_phone_security">Phone security settings</string>
+    <string name="lock_unlock_noop">Unlock NOOP</string>
+    <string name="lock_settings_section">Privacy &amp; app lock</string>
+    <string name="lock_setting_title">Lock NOOP</string>
+    <string name="lock_turn_on">Turn on NOOP app lock</string>
+    <string name="lock_turn_off">Turn off NOOP app lock</string>
+    <string name="lock_no_secure_lock">Your phone does not currently have a secure screen lock. Set one before enabling NOOP app lock.</string>
+    <string name="lock_open_security">Open phone security settings</string>
+    <string name="export_gpx">GPX</string>
+    <string name="export_fit">FIT</string>
+    <string name="sw_log_strength">Log strength</string>
+    <string name="sw_strength_log">Strength log</string>
+    <string name="sw_volume_note_detail">Volume is reps × external load for working sets. It is shown separately from HR-derived Effort.</string>
+    <string name="sw_log_title">Log Strength Workout</string>
+    <string name="sw_edit_title">Edit Strength Workout</string>
+    <string name="sw_privacy_note">Exercises and sets stay on this device and in your NOOP backup.</string>
+    <string name="sw_duration_minutes">Duration (minutes)</string>
+    <string name="sw_routines_header">ROUTINES</string>
+    <string name="sw_routines_empty">Save this layout to reuse it later.</string>
+    <string name="sw_routines_some">Load a saved layout or update the current one.</string>
+    <string name="sw_load_routine">Load routine</string>
+    <string name="sw_save_routine">Save routine</string>
+    <string name="sw_update_routine">Update routine</string>
+    <string name="sw_rest_timer_header">REST TIMER</string>
+    <string name="sw_next_set_in">Next set in</string>
+    <string name="sw_ready">Ready when you are</string>
+    <string name="sw_rest_complete">Rest complete</string>
+    <string name="sw_rest_button">Rest %1$s</string>
+    <string name="sw_restart">Restart</string>
+    <string name="sw_start">Start</string>
+    <string name="sw_add_30s">+30s</string>
+    <string name="sw_skip">Skip</string>
+    <string name="sw_exercise">Exercise</string>
+    <string name="sw_remove">Remove</string>
+    <string name="sw_reps">Reps</string>
+    <string name="sw_unit_load">%1$s load</string>
+    <string name="sw_warmup">Warm-up</string>
+    <string name="sw_remove_set">Remove set</string>
+    <string name="sw_add_set">Add set</string>
+    <string name="sw_add_exercise">Add exercise</string>
+    <string name="sw_volume_note_dialog">Volume = reps × external load for working sets. Warm-ups and unweighted bodyweight sets are excluded.</string>
+    <string name="sw_validation">Add an exercise and complete every set with 1–1,000 reps. Load is optional.</string>
+    <string name="sw_add">Add</string>
+    <string name="sw_save">Save</string>
+    <string name="sw_cancel">Cancel</string>
+    <string name="sw_routines_title">Strength routines</string>
+    <string name="sw_load">Load</string>
+    <string name="sw_delete">Delete</string>
+    <string name="sw_done">Done</string>
+    <string name="sw_save_routine_title">Save Routine</string>
+    <string name="sw_routine_name">Routine name</string>
+    <string name="sw_save_routine_hint">Save these exercises, sets, reps and loads for a future workout.</string>
+    <string name="sw_started">Started %1$s</string>
+    <string name="sw_progression_header">PROGRESSION</string>
+    <string name="sw_new_pr_one">★ %1$d NEW PR</string>
+    <string name="sw_new_pr_many">★ %1$d NEW PRS</string>
+    <string name="sw_progress_compared">Compared with earlier logged sets. Estimated 1RM uses Epley only for sets of 1–12 reps.</string>
+    <string name="sw_progress_first">This is the first loaded mark for this exercise. Estimated 1RM uses Epley for 1–12 reps.</string>
+</resources>

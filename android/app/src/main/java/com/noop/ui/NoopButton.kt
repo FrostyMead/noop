@@ -67,8 +67,8 @@ enum class NoopButtonKind {
 private object NoopButtonMetrics {
     /** Standard control height (48). */
     val height = 48.dp
-    /** Corner radius (14) — softer than a card, not a pill. */
-    val cornerRadius = 14.dp
+    /** Full capsule radius: primary actions share the app's soft, rounded control language. */
+    val cornerRadius = 24.dp
     /** Horizontal label inset. */
     val hPadding = 18.dp
     /** Spacing between a leading icon and the label. */

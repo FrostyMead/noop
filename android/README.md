@@ -3,7 +3,9 @@
 An **offline WHOOP companion** for Android. NOOP connects directly to a WHOOP 4.0
 (and WHOOP 5.0) strap over Bluetooth Low Energy, reads heart rate, R-R intervals,
 battery, and sensor data, and stores everything **locally** on the device. There is
-no account, no server, and no `INTERNET` permission — nothing leaves the phone.
+no required account or NOOP server. The core strap pipeline stays on the phone. The app does include
+`INTERNET` for explicitly networked features such as update checks and the opt-in, bring-your-own-key
+AI coach; those features are separate from Bluetooth collection and are disclosed in their UI.
 
 This is an independent Kotlin / Jetpack Compose reimplementation of the macOS/iOS
 reference app (`Strand/`, Swift). The protocol, framing, and BLE handshake are
@@ -146,6 +148,33 @@ The debug APK lands at `app/build/outputs/apk/full/debug/app-full-debug.apk`. (T
 flavors — `full` = the real app, `demo` = preloaded synthetic data; substitute `Demo` for
 `Full` to build that one.)
 
+### Private release signing (personal Android install)
+
+Release APKs deliberately fail to build without a private key. On Windows, generate a unique key and
+local signing configuration once:
+
+```powershell
+cd <your-noop-clone>\android
+.\setup-private-signing.ps1
+.\gradlew.bat assembleFullRelease
+```
+
+The signed APK lands at `app/build/outputs/apk/full/release/app-full-release.apk`. Both generated files
+are git-ignored:
+
+- `private-release.keystore` — your app identity.
+- `keystore.properties` — the random password and alias Gradle uses to open that key.
+
+Back up **both files together** somewhere private. Anyone with them can sign an APK that Android treats
+as an update to your app; if you lose them, a new release cannot update the installed copy without first
+uninstalling it (which removes app-local data unless you export a backup).
+
+For the fork release workflows, add repository Actions secrets named
+`ANDROID_RELEASE_KEYSTORE_BASE64`, `ANDROID_RELEASE_STORE_PASSWORD`,
+`ANDROID_RELEASE_KEY_ALIAS`, and `ANDROID_RELEASE_KEY_PASSWORD`. The first value is the base64-encoded
+contents of `private-release.keystore`; the other three come from `keystore.properties`. The workflows
+fail closed when any secret is absent.
+
 > **About the wrapper:** `gradle-wrapper.jar`, both wrapper scripts, and the wrapper properties are
 > checked in. The properties pin the Gradle distribution checksum, while CI validates the wrapper
 > JAR. Do not regenerate only one part of the wrapper or substitute an unreviewed binary.
@@ -189,7 +218,8 @@ install side-by-side.
 
 ## Permissions & why
 
-NOOP requests only what BLE needs, and deliberately omits `INTERNET`:
+NOOP requests the Bluetooth/background permissions needed for collection. It also declares `INTERNET`
+for the update checker and opt-in network features; raw strap collection itself does not require or use it:
 
 - **`BLUETOOTH_SCAN`** (`neverForLocation`) + **`BLUETOOTH_CONNECT`** — Android 12+ (API 31+)
   runtime permissions. `neverForLocation` lets us skip the location grant on modern Android
@@ -257,8 +287,10 @@ phone **and** a WHOOP strap.
 
 **Privacy sanity check:**
 
-- [ ] Confirm the merged manifest contains **no `INTERNET` permission**
-      (`app/build/intermediates/merged_manifests/…`) — the app must stay fully offline.
+- [ ] Turn on **Settings → Privacy & app lock**, background the app, and confirm returning requires
+      Android authentication and that the recent-app preview is hidden.
+- [ ] Confirm normal strap collection produces no outbound network traffic; separately exercise only
+      the opt-in network features you intend to use.
 
 ---
 

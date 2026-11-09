@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="overview_recovery">Recovery</string>
+    <string name="overview_sleep">Sleep</string>
+    <string name="overview_percent">%1$d%%</string>
+    <string name="overview_out_of">Out of %1$d</string>
+    <string name="overview_sleep_score">Sleep score</string>
+    <string name="overview_sleep_pending">Needs a tracked night</string>
+    <string name="overview_score_source">Scores from %1$s</string>
+    <string name="overview_daily_insight">Your day at a glance</string>
+    <string name="overview_health_monitor">Health monitor</string>
+    <string name="overview_monitor_empty">Waiting for overnight readings</string>
+    <string name="overview_monitor_partial">Some readings are unavailable</string>
+    <string name="overview_monitor_outside">Readings outside their reference range</string>
+    <string name="overview_monitor_personal">All 3 readings within your usual range</string>
+    <string name="overview_monitor_typical">All 3 readings within reference ranges</string>
+    <string name="overview_in_personal">Within your usual range</string>
+    <string name="overview_out_personal">Outside your usual range</string>
+    <string name="overview_in_typical">Within typical range</string>
+    <string name="overview_out_typical">Outside typical range</string>
+    <string name="overview_expanded">Expanded</string>
+    <string name="overview_collapsed">Collapsed</string>
+    <string name="overview_sleep_summary">Sleep overview</string>
+    <string name="overview_sleep_duration">%1$dh %2$dm</string>
+    <string name="overview_sleep_deep">Deep</string>
+    <string name="overview_sleep_rem">REM</string>
+    <string name="overview_sleep_light">Light</string>
+    <string name="overview_sleep_details">Tap to view sleep details</string>
+    <string name="overview_stage_minutes">%1$s · %2$d min</string>
+    <string name="overview_connected">Strap connected</string>
+    <string name="overview_disconnected">Strap disconnected</string>
+    <string name="overview_minutes">%1$d min</string>
+    <string name="overview_insight_label">Insight</string>
+    <string name="sleep_scene_in_bed">Time in bed</string>
+    <string name="sleep_scene_asleep">Time asleep</string>
+    <string name="sleep_scene_performance">Sleep performance</string>
+</resources>

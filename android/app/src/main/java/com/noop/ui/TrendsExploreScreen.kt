@@ -509,7 +509,7 @@ private fun MetricDropdown(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val grouped = remember(metrics) { metrics.groupBy { it.category } }
-    val shape = RoundedCornerShape(Metrics.cornerSm)
+    val shape = RoundedCornerShape(Metrics.cornerMd)
 
     ExposedDropdownMenuBox(
         expanded = expanded,

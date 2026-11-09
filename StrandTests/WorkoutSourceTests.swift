@@ -12,7 +12,8 @@ final class WorkoutSourceTests: XCTestCase {
                      avgHr: Int? = nil, maxHr: Int? = nil, strain: Double? = nil) -> WorkoutRow {
         WorkoutRow(startTs: start, endTs: end, sport: sport, source: source,
                    durationS: Double(end - start), energyKcal: nil, avgHr: avgHr, maxHr: maxHr,
-                   strain: strain, distanceM: nil, zonesJSON: nil, notes: nil, steps: nil)
+                   strain: strain, distanceM: nil, zonesJSON: nil, notes: nil, steps: nil,
+                   strengthJSON: nil)
     }
 
     // MARK: - classify
@@ -83,13 +84,15 @@ final class WorkoutSourceTests: XCTestCase {
         // A live strap session: HR trace, peak, strain, zones, distance, energy all captured.
         WorkoutRow(startTs: start, endTs: end, sport: sport, source: source,
                    durationS: Double(end - start), energyKcal: 600, avgHr: 150, maxHr: 178,
-                   strain: 14.0, distanceM: 10_000, zonesJSON: #"{"z1":10}"#, notes: nil, steps: nil)
+                   strain: 14.0, distanceM: 10_000, zonesJSON: #"{"z1":10}"#, notes: nil, steps: nil,
+                   strengthJSON: nil)
     }
     private func thinImport(start: Int, end: Int, sport: String, source: String) -> WorkoutRow {
         // A thin Health Connect / Apple import: only duration + calories.
         WorkoutRow(startTs: start, endTs: end, sport: sport, source: source,
                    durationS: Double(end - start), energyKcal: 590, avgHr: nil, maxHr: nil,
-                   strain: nil, distanceM: nil, zonesJSON: nil, notes: nil, steps: nil)
+                   strain: nil, distanceM: nil, zonesJSON: nil, notes: nil, steps: nil,
+                   strengthJSON: nil)
     }
 
     func testSportKeyFoldsCamelCaseAndSpacing() {
@@ -334,6 +337,13 @@ final class WorkoutSourceTests: XCTestCase {
         XCTAssertEqual(WorkoutSource.preservingCaptured(edited, from: old).steps, 4_200)
     }
 
+    func testPreservingCapturedCarriesStrengthPayloadFromOld() {
+        let old = fullRow(start: 100, end: 3700, sport: "Strength Training", source: "manual",
+                          strengthJSON: #"{"version":1}"#)
+        let edited = fullRow(start: 100, end: 3700, sport: "Strength Training", source: "manual")
+        XCTAssertEqual(WorkoutSource.preservingCaptured(edited, from: old).strengthJSON, old.strengthJSON)
+    }
+
     func testPreservingCapturedCarriesUnexposedFieldsOnEdit() {
         // The sheet rebuilds a row from its 5 inputs; an edit must keep the original's captured
         // maxHr/strain (a live-tracked session has real values the sheet never shows).
@@ -357,10 +367,11 @@ final class WorkoutSourceTests: XCTestCase {
     private func fullRow(start: Int, end: Int, sport: String, source: String,
                          avgHr: Int? = nil, kcal: Double? = nil, dist: Double? = nil,
                          strain: Double? = nil, maxHr: Int? = nil, notes: String? = nil,
-                         steps: Int? = nil) -> WorkoutRow {
+                         steps: Int? = nil, strengthJSON: String? = nil) -> WorkoutRow {
         WorkoutRow(startTs: start, endTs: end, sport: sport, source: source,
                    durationS: Double(end - start), energyKcal: kcal, avgHr: avgHr, maxHr: maxHr,
-                   strain: strain, distanceM: dist, zonesJSON: nil, notes: notes, steps: steps)
+                   strain: strain, distanceM: dist, zonesJSON: nil, notes: notes, steps: steps,
+                   strengthJSON: strengthJSON)
     }
 
     func testFilterInactiveWhenEmptyPassesEverythingUntouched() {
@@ -400,10 +411,13 @@ final class WorkoutSourceTests: XCTestCase {
         let detected = fullRow(start: 100, end: 3700, sport: "detected", source: "my-whoop-noop")
         let whoop = fullRow(start: 100, end: 3700, sport: "Running", source: "whoop")
         let apple = fullRow(start: 100, end: 3700, sport: "Running", source: "apple-health")
+        let structuredStrength = fullRow(start: 100, end: 3700, sport: "Strength Training", source: "manual",
+                                         strengthJSON: #"{"version":1}"#)
         XCTAssertTrue(WorkoutMerge.isMergeable(manual))
         XCTAssertTrue(WorkoutMerge.isMergeable(detected))
         XCTAssertFalse(WorkoutMerge.isMergeable(whoop))
         XCTAssertFalse(WorkoutMerge.isMergeable(apple))
+        XCTAssertFalse(WorkoutMerge.isMergeable(structuredStrength))
         // canMerge needs 2+ and every row eligible (a single imported row poisons the set).
         XCTAssertTrue(WorkoutMerge.canMerge([manual, detected]))
         XCTAssertFalse(WorkoutMerge.canMerge([manual]))

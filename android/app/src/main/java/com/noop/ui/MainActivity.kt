@@ -1,14 +1,23 @@
 package com.noop.ui
 
+import com.noop.R
 import android.Manifest
+import android.app.Activity
+import android.app.KeyguardManager
+import android.hardware.biometrics.BiometricManager
+import android.hardware.biometrics.BiometricPrompt
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
+import android.os.CancellationSignal
+import android.provider.Settings
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -43,6 +52,12 @@ import kotlinx.coroutines.flow.distinctUntilChanged
  */
 class MainActivity : ComponentActivity() {
 
+    private var appLocked by mutableStateOf(false)
+    private var appLockMessage by mutableStateOf<String?>(null)
+    private var authenticationInFlight = false
+    private var credentialSuccess: (() -> Unit)? = null
+    private var credentialError: ((String) -> Unit)? = null
+
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppLanguagePrefs.wrap(newBase))
     }
@@ -53,9 +68,28 @@ class MainActivity : ComponentActivity() {
             // the UI simply reflects connection state. No blocking here.
         }
 
+    private val credentialLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val success = credentialSuccess
+            val error = credentialError
+            credentialSuccess = null
+            credentialError = null
+            authenticationInFlight = false
+            if (result.resultCode == Activity.RESULT_OK) {
+                success?.invoke()
+            } else {
+                error?.invoke("Unlock cancelled.")
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        appLocked = AppLockPrefs.isEnabled(this)
+        syncScreenshotProtection()
+        // 2026 neutral-dashboard migration: retire the colourful sky once for existing installs too.
+        // The Appearance switches remain available, so the user can deliberately opt back in later.
+        NoopPrefs.applyNeutralDashboardDefault(this)
         // Load the saved "Card transparency" so every frosted card renders at the chosen opacity from launch.
         CardAppearance.init(this)
 
@@ -110,8 +144,154 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             NoopTheme {
-                NoopRoot()
+                if (appLocked) {
+                    AppLockScreen(
+                        message = appLockMessage,
+                        onUnlock = ::requestAppUnlock,
+                        onOpenPhoneSecurity = {
+                            startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS))
+                        },
+                    )
+                } else {
+                    NoopRoot()
+                }
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        syncScreenshotProtection()
+        if (appLocked && AppLockPrefs.isEnabled(this)) {
+            // Post until the resumed window is ready to own the system authentication surface.
+            window.decorView.post { requestAppUnlock() }
+        }
+    }
+
+    override fun onStop() {
+        if (AppLockPolicy.shouldLockOnStop(AppLockPrefs.isEnabled(this), isChangingConfigurations)) {
+            appLocked = true
+        }
+        super.onStop()
+    }
+
+    /** Persist the setting and immediately protect/unprotect screenshots and the recents preview. */
+    internal fun setAppLockEnabled(enabled: Boolean) {
+        AppLockPrefs.setEnabled(this, enabled)
+        appLocked = false
+        appLockMessage = null
+        syncScreenshotProtection()
+    }
+
+    /**
+     * Ask Android to authenticate the phone owner. NOOP never receives or stores a PIN/password.
+     * Android 10+ can present enrolled biometrics or the device credential; Android 8/9 use the
+     * system credential confirmation screen.
+     */
+    @Suppress("DEPRECATION")
+    internal fun authenticateForAppLock(
+        title: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        if (authenticationInFlight) return
+        val keyguard = getSystemService(KeyguardManager::class.java)
+        if (keyguard?.isDeviceSecure != true) {
+            onError("Set a PIN, pattern, password, or biometric in phone security settings first.")
+            return
+        }
+
+        authenticationInFlight = true
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                showBiometricOrCredentialPrompt(title, onSuccess, onError)
+            } else {
+                val intent = keyguard.createConfirmDeviceCredentialIntent(
+                    title,
+                    "Confirm the screen lock for this phone.",
+                )
+                if (intent == null) {
+                    authenticationInFlight = false
+                    onError("This phone could not open its secure unlock screen.")
+                } else {
+                    credentialSuccess = onSuccess
+                    credentialError = onError
+                    credentialLauncher.launch(intent)
+                }
+            }
+        } catch (_: SecurityException) {
+            authenticationInFlight = false
+            credentialSuccess = null
+            credentialError = null
+            onError("Android denied access to secure authentication. Update or reinstall NOOP and try again.")
+        } catch (_: IllegalArgumentException) {
+            authenticationInFlight = false
+            credentialSuccess = null
+            credentialError = null
+            onError("This phone does not support the requested secure unlock method.")
+        } catch (_: IllegalStateException) {
+            authenticationInFlight = false
+            credentialSuccess = null
+            credentialError = null
+            onError("Android could not open secure authentication. Return to NOOP and try again.")
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun showBiometricOrCredentialPrompt(
+        title: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        val builder = BiometricPrompt.Builder(this)
+            .setTitle(title)
+            .setSubtitle("Use your fingerprint, face, or phone screen lock.")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            builder.setAllowedAuthenticators(
+                BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                    BiometricManager.Authenticators.DEVICE_CREDENTIAL,
+            )
+        } else {
+            builder.setDeviceCredentialAllowed(true)
+        }
+
+        builder.build().authenticate(
+            CancellationSignal(),
+            mainExecutor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult?) {
+                    authenticationInFlight = false
+                    onSuccess()
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence?) {
+                    authenticationInFlight = false
+                    onError(errString?.toString()?.takeIf { it.isNotBlank() } ?: "Unlock cancelled.")
+                }
+            },
+        )
+    }
+
+    private fun requestAppUnlock() {
+        if (!appLocked || !AppLockPrefs.isEnabled(this) || authenticationInFlight) return
+        appLockMessage = null
+        authenticateForAppLock(
+            title = uiString(R.string.lock_unlock_noop),
+            onSuccess = {
+                appLockMessage = null
+                appLocked = false
+            },
+            onError = { appLockMessage = it },
+        )
+    }
+
+    private fun syncScreenshotProtection() {
+        if (AppLockPrefs.isEnabled(this)) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         }
     }
 
@@ -859,15 +1039,24 @@ object NoopPrefs {
         of(context).edit().putBoolean(KEY_HYDRATION_TRACKING, enabled).apply()
     }
 
-    /** "Day-cycle background" (#698): the time-of-day scene (sunrise / day / dusk / night) behind the
-     *  Today screen. Default ON, it's the v7 atmosphere. Some people find the moving scene distracting
-     *  and want a plain dark canvas, so turning this off makes TodayScreen drop the SceneScreenBackground
-     *  and fall back to the flat surface; the cards already sit on an opaque canvas, so they stay just as
-     *  readable. Mirrors macOS @AppStorage("noop.showDayCycleBackground"). */
+    /** Optional day-cycle atmosphere. The default is the calm flat charcoal canvas; people who want the
+     *  sunrise/day/dusk scene can still opt in from Appearance settings. */
     const val KEY_SHOW_DAY_CYCLE_BACKGROUND = "noop.showDayCycleBackground"
 
+    private const val KEY_NEUTRAL_DASHBOARD_MIGRATED = "noop.neutralDashboardMigrated"
+
+    fun applyNeutralDashboardDefault(context: Context) {
+        val prefs = of(context)
+        if (prefs.getBoolean(KEY_NEUTRAL_DASHBOARD_MIGRATED, false)) return
+        prefs.edit()
+            .putBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, false)
+            .putBoolean(KEY_SKY_BEHIND_CARDS, false)
+            .putBoolean(KEY_NEUTRAL_DASHBOARD_MIGRATED, true)
+            .apply()
+    }
+
     fun showDayCycleBackground(context: Context): Boolean =
-        of(context).getBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, true)
+        of(context).getBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, false)
 
     fun setShowDayCycleBackground(context: Context, enabled: Boolean) {
         of(context).edit().putBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, enabled).apply()
@@ -890,11 +1079,9 @@ object NoopPrefs {
      *  [showDayCycleBackground] — no effect when the scene is off. Read once on Today entry. */
     const val KEY_SKY_BEHIND_CARDS = "noop.skyBehindCards"
 
-    // Default ON: the day-cycle sky extends behind the whole scroll out of the box. Still user-toggleable
-    // in Settings ("Sky behind cards"); only never-toggled users pick up the new default. Twin of the iOS
-    // @AppStorage(SkyBehindCardsPrefs.enabledKey) defaults.
+    // Opt-in only: a fresh install stays on the neutral canvas even when transparent cards are enabled.
     fun skyBehindCards(context: Context): Boolean =
-        of(context).getBoolean(KEY_SKY_BEHIND_CARDS, true)
+        of(context).getBoolean(KEY_SKY_BEHIND_CARDS, false)
 
     fun setSkyBehindCards(context: Context, enabled: Boolean) {
         of(context).edit().putBoolean(KEY_SKY_BEHIND_CARDS, enabled).apply()

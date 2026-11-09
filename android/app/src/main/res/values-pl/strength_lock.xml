@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strength workout, app lock and activity export copy (moved out of the Kotlin sources). -->
+<resources>
+    <string name="lock_title">NOOP jest zablokowany</string>
+    <string name="lock_body">Odblokuj odciskiem palca, twarzą lub blokadą ekranu telefonu. Zbieranie danych przez Bluetooth może trwać, gdy ten ekran jest zablokowany.</string>
+    <string name="lock_unlock">Odblokuj</string>
+    <string name="lock_phone_security">Ustawienia zabezpieczeń telefonu</string>
+    <string name="lock_unlock_noop">Odblokuj NOOP</string>
+    <string name="lock_settings_section">Prywatność i blokada aplikacji</string>
+    <string name="lock_setting_title">Zablokuj NOOP</string>
+    <string name="lock_turn_on">Włącz blokadę aplikacji NOOP</string>
+    <string name="lock_turn_off">Wyłącz blokadę aplikacji NOOP</string>
+    <string name="lock_no_secure_lock">Twój telefon nie ma obecnie bezpiecznej blokady ekranu. Ustaw ją przed włączeniem blokady aplikacji NOOP.</string>
+    <string name="lock_open_security">Otwórz ustawienia zabezpieczeń</string>
+    <string name="export_gpx">GPX</string>
+    <string name="export_fit">FIT</string>
+    <string name="sw_log_strength">Zapisz siłowy</string>
+    <string name="sw_strength_log">Dziennik siłowy</string>
+    <string name="sw_volume_note_detail">Objętość to powtórzenia × obciążenie zewnętrzne w seriach roboczych. Jest pokazywana osobno od Wysiłku liczonego z tętna.</string>
+    <string name="sw_log_title">Zapisz trening siłowy</string>
+    <string name="sw_edit_title">Edytuj trening siłowy</string>
+    <string name="sw_privacy_note">Ćwiczenia i serie zostają na tym urządzeniu i w kopii zapasowej NOOP.</string>
+    <string name="sw_duration_minutes">Czas trwania (minuty)</string>
+    <string name="sw_routines_header">PLANY</string>
+    <string name="sw_routines_empty">Zapisz ten układ, aby użyć go później.</string>
+    <string name="sw_routines_some">Wczytaj zapisany układ lub zaktualizuj bieżący.</string>
+    <string name="sw_load_routine">Wczytaj plan</string>
+    <string name="sw_save_routine">Zapisz plan</string>
+    <string name="sw_update_routine">Zaktualizuj plan</string>
+    <string name="sw_rest_timer_header">MINUTNIK PRZERWY</string>
+    <string name="sw_next_set_in">Następna seria za</string>
+    <string name="sw_ready">Gotowe, kiedy zechcesz</string>
+    <string name="sw_rest_complete">Przerwa zakończona</string>
+    <string name="sw_rest_button">Przerwa %1$s</string>
+    <string name="sw_restart">Uruchom ponownie</string>
+    <string name="sw_start">Rozpocznij</string>
+    <string name="sw_add_30s">+30 s</string>
+    <string name="sw_skip">Pomiń</string>
+    <string name="sw_exercise">Ćwiczenie</string>
+    <string name="sw_remove">Usuń</string>
+    <string name="sw_reps">Powtórzenia</string>
+    <string name="sw_unit_load">Obciążenie (%1$s)</string>
+    <string name="sw_warmup">Rozgrzewka</string>
+    <string name="sw_remove_set">Usuń serię</string>
+    <string name="sw_add_set">Dodaj serię</string>
+    <string name="sw_add_exercise">Dodaj ćwiczenie</string>
+    <string name="sw_volume_note_dialog">Objętość = powtórzenia × obciążenie zewnętrzne w seriach roboczych. Rozgrzewki i serie z masą ciała bez obciążenia są pomijane.</string>
+    <string name="sw_validation">Dodaj ćwiczenie i uzupełnij każdą serię liczbą 1–1000 powtórzeń. Obciążenie jest opcjonalne.</string>
+    <string name="sw_add">Dodaj</string>
+    <string name="sw_save">Zapisz</string>
+    <string name="sw_cancel">Anuluj</string>
+    <string name="sw_routines_title">Plany siłowe</string>
+    <string name="sw_load">Wczytaj</string>
+    <string name="sw_delete">Usuń</string>
+    <string name="sw_done">Gotowe</string>
+    <string name="sw_save_routine_title">Zapisz plan</string>
+    <string name="sw_routine_name">Nazwa planu</string>
+    <string name="sw_save_routine_hint">Zapisz te ćwiczenia, serie, powtórzenia i obciążenia na przyszły trening.</string>
+    <string name="sw_started">Rozpoczęto: %1$s</string>
+    <string name="sw_progression_header">POSTĘPY</string>
+    <string name="sw_new_pr_one">★ %1$d NOWY REKORD</string>
+    <string name="sw_new_pr_many">★ %1$d NOWE REKORDY</string>
+    <string name="sw_progress_compared">W porównaniu z wcześniej zapisanymi seriami. Szacowany 1RM liczony wzorem Epleya tylko dla serii 1–12 powtórzeń.</string>
+    <string name="sw_progress_first">To pierwszy wynik z obciążeniem dla tego ćwiczenia. Szacowany 1RM liczony wzorem Epleya dla 1–12 powtórzeń.</string>
+</resources>

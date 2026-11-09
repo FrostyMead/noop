@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -27,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -64,6 +66,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.ui.window.Dialog
@@ -81,6 +84,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -137,6 +141,11 @@ private enum class Destination(
 
     // Group: Activity
     Workouts("workouts", R.string.nav_workouts, Icons.Filled.FitnessCenter),
+    // One session, full screen. Contextual (reached by tapping a workout on Today or in the Workouts
+    // list), so like [StepsCalibration] it is deliberately absent from [drawerGroups] — it is not another
+    // top-level More item. Keyed by (startTs, deviceId), the session's storage key, so the page resolves
+    // exactly the row that was tapped rather than the first one that happens to share a timestamp.
+    WorkoutDetail("workout_detail/{startTs}/{deviceId}", R.string.nav_workouts, Icons.Filled.FitnessCenter),
     Trends("trends", R.string.nav_trends, Icons.AutoMirrored.Filled.TrendingUp),
 
     // Group: Insight
@@ -281,6 +290,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
     val currentRoute = backStack?.destination?.route
     val current = Destination.forRoute(currentRoute)
     var showQuickActions by remember { mutableStateOf(false) }
+    var requestTodayCustomization by remember { mutableStateOf(false) }
     // The Updates inbox sheet (opened by the Today header bell). The store is a process singleton so
     // the Today cards and the import path post to the same inbox this sheet renders.
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -294,12 +304,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
         Scaffold(
             containerColor = Palette.surfaceBase,
             bottomBar = {
-                // One unified "glass" bar: four evenly-spaced tabs — Today · Trends · Sleep · More
-                // (matches the iOS FloatingTabBar). The quick-action "+" lives in the Today header's
-                // top-right (balancing the avatar), so the bar is clean tabs only. "More" navigates to
-                // its own page (mirroring the iOS More tab) that reaches every grouped destination, so no
-                // destination is lost without the drawer.
-                GlassBottomBar(
+                // Native Android navigation, with quick actions in the Today header.
+                OverviewBottomBar(
                     current = current,
                     onTabSelected = { dest ->
                         if (dest.route != currentRoute) nav.navigateTopLevel(dest.route)
@@ -325,9 +331,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.Today.route) {
                     TodayScreen(
                         viewModel = viewModel,
-                        // The quick-action "+" lives in the Today header's top-right now (off the
-                        // bottom bar) — it opens the same quick-action sheet the bar used to.
                         onQuickActions = { showQuickActions = true },
+                        customizeRequested = requestTodayCustomization,
+                        onCustomizeRequestHandled = { requestTodayCustomization = false },
                         // The Updates "ringer" — the bell sits before the +, and opens the inbox
                         // sheet AppRoot presents (it owns the nav for deep-links).
                         updateStore = updateStore,
@@ -363,6 +369,10 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         // #627: the journal-reminder card opens the journal (hosted in Insights), same
                         // destination the Sleep screen's morning sheet uses.
                         onOpenJournal = { nav.navigateTopLevel(Destination.Insights.route) },
+                        // A tapped workout row pushes that session's page. Plain `navigate`, not
+                        // navigateTopLevel: this is a drill-down, so it must stack ON Today and pop back
+                        // to it, not replace the tab's start destination.
+                        onOpenWorkout = { nav.navigate(workoutDetailRoute(it.startTs, it.deviceId)) },
                     )
                 }
                 composable(Destination.Live.route) {
@@ -390,7 +400,22 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.Explore.route) { TrendsExploreScreen(viewModel) }
                 composable(Destination.Automations.route) { AutomationsScreen(viewModel) }
                 composable(Destination.SmartAlarm.route) { SmartAlarmScreen(viewModel) }
-                composable(Destination.Workouts.route) { WorkoutsScreen(viewModel) }
+                composable(Destination.Workouts.route) {
+                    WorkoutsScreen(
+                        viewModel,
+                        onOpenDetail = { nav.navigate(workoutDetailRoute(it.startTs, it.deviceId)) },
+                    )
+                }
+                composable(Destination.WorkoutDetail.route) { backStackEntry ->
+                    WorkoutDetailScreen(
+                        vm = viewModel,
+                        startTs = backStackEntry.arguments?.getString("startTs")?.toLongOrNull() ?: 0L,
+                        // The device id is percent-encoded into the route by workoutDetailRoute(); the
+                        // nav library hands it back decoded.
+                        deviceId = backStackEntry.arguments?.getString("deviceId").orEmpty(),
+                        onBack = { nav.popBackStack() },
+                    )
+                }
                 composable(Destination.Intelligence.route) { IntelligenceScreen(viewModel) }
 
                 // --- Placeholder routes (later waves fill these in) ---
@@ -478,8 +503,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
             }
         }
 
-        // Quick-actions sheet, opened by the raised gold centre FAB. Each row routes to an
-        // existing destination — nothing new is built here, the FAB is just a faster door in.
+        // Quick-actions sheet, opened by the separate + disc beside the navigation capsule.
         if (showQuickActions) {
             ModalBottomSheet(
                 onDismissRequest = { showQuickActions = false },
@@ -496,6 +520,22 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         "Quick actions",
                         modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 6.dp),
                         color = Palette.textTertiary,
+                    )
+                    NavigationDrawerItem(
+                        selected = false,
+                        onClick = {
+                            showQuickActions = false
+                            requestTodayCustomization = true
+                            nav.navigateTopLevel(Destination.Today.route)
+                        },
+                        icon = { Icon(Icons.Filled.Tune, contentDescription = null) },
+                        label = { Text(stringResource(R.string.today_customize_title), style = NoopType.body) },
+                        colors = NavigationDrawerItemDefaults.colors(
+                            unselectedContainerColor = Palette.surfaceRaised,
+                            unselectedIconColor = Palette.accent,
+                            unselectedTextColor = Palette.textPrimary,
+                        ),
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                     )
                     // Updates inbox — relocated here off the Today header (the liquid Today header mirrors iOS,
                     // which has no notifications bell). The feature is fully intact and one tap away: this row
@@ -695,7 +735,7 @@ private fun MoreGroupHeader(title: String, expanded: Boolean, onToggle: () -> Un
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(Metrics.cornerXs))
             .clickable(onClick = onToggle)
             .semantics {
                 contentDescription = title
@@ -763,110 +803,41 @@ private val barTrailingTabs = listOf(
 )
 
 @Composable
-private fun GlassBottomBar(
-    current: Destination,
-    onTabSelected: (Destination) -> Unit,
-) {
-    val barShape = RoundedCornerShape(50)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            // Clear the gesture-nav bar (home indicator) first, then add breathing room so the capsule
-            // floats free of the bottom edge rather than jamming against it — iOS clears the home-indicator
-            // safe area + 4pt; here navigationBarsPadding + 12dp gives the same lift.
-            .navigationBarsPadding()
-            .padding(horizontal = 22.dp)
-            .padding(top = 4.dp, bottom = Metrics.space12),
-        contentAlignment = Alignment.Center,
-    ) {
-        Surface(
-            shape = barShape,
-            // "Glass": a translucent raised surface — a frosted island, not a hard slab. Compose has no
-            // cheap blur, so translucency (≈0.80) + a hairline rim is the Liquid-Glass stand-in. A soft,
-            // low drop shadow reads as floating without a glow.
-            color = Palette.surfaceRaised.copy(alpha = 0.80f),
-            tonalElevation = 2.dp,
-            shadowElevation = 4.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                // Cap the width so the pill stays a centred floating island on tablets, not a full-bleed bar.
-                .widthIn(max = 480.dp)
-                .border(0.5.dp, Palette.hairline.copy(alpha = 0.6f), barShape),
+private fun OverviewBottomBar(current: Destination, onTabSelected: (Destination) -> Unit) {
+    // The bar sits on the canvas itself, separated from the scrolling cards by one hairline: navigation is
+    // chrome, so it carries no surface of its own and no colour (selection is shown by weight and contrast).
+    Column {
+        androidx.compose.material3.HorizontalDivider(color = Palette.hairline)
+        androidx.compose.material3.NavigationBar(
+            containerColor = Palette.surfaceBase,
+            tonalElevation = TodayStyle.flatElevation,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                barLeadingTabs.forEach { tab ->
-                    BarSlot(
-                        icon = tab.icon,
-                        label = stringResource(tab.labelRes),
-                        active = current == tab.dest,
-                        modifier = Modifier.weight(1f),
-                        onClick = { onTabSelected(tab.dest) },
-                    )
-                }
-                barTrailingTabs.forEach { tab ->
-                    BarSlot(
-                        icon = tab.icon,
-                        label = stringResource(tab.labelRes),
-                        active = current == tab.dest,
-                        modifier = Modifier.weight(1f),
-                        onClick = { onTabSelected(tab.dest) },
-                    )
-                }
-                BarSlot(
-                    icon = Icons.Filled.MoreHoriz,
-                    label = stringResource(R.string.nav_more),
-                    // Selected on the More page itself, and also kept lit whenever the current screen is
-                    // one reached THROUGH More (i.e. not one of the bar's own three tabs) — so drilling
-                    // into any grouped destination still reads as "you're in More", never "nowhere".
-                    active = current != Destination.Today && current != Destination.Trends &&
-                        current != Destination.Sleep,
-                    modifier = Modifier.weight(1f),
-                    onClick = { onTabSelected(Destination.More) },
+            val colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+                selectedIconColor = Palette.textPrimary, selectedTextColor = Palette.textPrimary,
+                unselectedIconColor = Palette.textTertiary, unselectedTextColor = Palette.textTertiary,
+                indicatorColor = Palette.surfaceInset,
+            )
+            @Composable
+            fun label(text: String, selected: Boolean) = Text(
+                text,
+                style = NoopType.caption.copy(fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium),
+            )
+            (barLeadingTabs + barTrailingTabs).forEach { tab ->
+                val selected = current == tab.dest
+                NavigationBarItem(
+                    selected = selected, onClick = { onTabSelected(tab.dest) },
+                    icon = { Icon(tab.icon, contentDescription = null) },
+                    label = { label(stringResource(tab.labelRes), selected) }, colors = colors,
                 )
             }
-        }
-    }
-}
-
-/** One nav slot: an icon over a small label. Active = gold accent (semibold), inactive = textSecondary.
- *  No selection pill, no glow — just the colour swap, matching the iOS bar. */
-@Composable
-private fun BarSlot(
-    icon: ImageVector,
-    label: String,
-    active: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    val tint = if (active) Palette.accent else Palette.textSecondary
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
+            val moreSelected = current != Destination.Today && current != Destination.Trends && current != Destination.Sleep
+            NavigationBarItem(
+                selected = moreSelected,
+                onClick = { onTabSelected(Destination.More) },
+                icon = { Icon(Icons.Filled.MoreHoriz, contentDescription = null) },
+                label = { label(stringResource(R.string.nav_more), moreSelected) }, colors = colors,
             )
-            .padding(vertical = 3.dp)
-            .semantics { contentDescription = label },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(3.dp),
-    ) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(Metrics.iconSmall))
-        Text(
-            label,
-            style = NoopType.footnote.copy(
-                fontSize = 10.sp,
-                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
-            ),
-            color = tint,
-        )
+        }
     }
 }
 
@@ -932,6 +903,16 @@ internal fun BrandMark(size: Dp = 22.dp) {
         drawCircle(color = Color.White, radius = stroke * 0.62f, center = center)
     }
 }
+
+/**
+ * The concrete route for one session's detail page.
+ *
+ * A device id is an opaque string that can contain `/` and `:` (a BLE address, an import source tag), and
+ * either would split the path into the wrong number of segments. Percent-encoding it is what makes the
+ * two-argument route safe; Navigation hands the value back decoded.
+ */
+internal fun workoutDetailRoute(startTs: Long, deviceId: String): String =
+    "workout_detail/$startTs/${android.net.Uri.encode(deviceId)}"
 
 /** Navigate to a top-level destination with single-top + state save/restore. */
 private fun NavHostController.navigateTopLevel(route: String) {

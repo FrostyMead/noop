@@ -18,6 +18,8 @@ local.properties
 # Keystores / signing
 *.jks
 *.keystore
+*.p12
+keystore.properties
 
 # NDK
 .cxx/

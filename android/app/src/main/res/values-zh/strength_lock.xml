@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strength workout, app lock and activity export copy (moved out of the Kotlin sources). -->
+<resources>
+    <string name="lock_title">NOOP 已锁定</string>
+    <string name="lock_body">使用指纹、面容或手机屏幕锁解锁。此屏幕锁定时，蓝牙采集仍可继续。</string>
+    <string name="lock_unlock">解锁</string>
+    <string name="lock_phone_security">手机安全设置</string>
+    <string name="lock_unlock_noop">解锁 NOOP</string>
+    <string name="lock_settings_section">隐私与应用锁</string>
+    <string name="lock_setting_title">锁定 NOOP</string>
+    <string name="lock_turn_on">开启 NOOP 应用锁</string>
+    <string name="lock_turn_off">关闭 NOOP 应用锁</string>
+    <string name="lock_no_secure_lock">你的手机目前没有安全的屏幕锁。请先设置屏幕锁，再开启 NOOP 应用锁。</string>
+    <string name="lock_open_security">打开手机安全设置</string>
+    <string name="export_gpx">GPX</string>
+    <string name="export_fit">FIT</string>
+    <string name="sw_log_strength">记录力量训练</string>
+    <string name="sw_strength_log">力量训练记录</string>
+    <string name="sw_volume_note_detail">训练量 = 正式组的次数 × 外部负重，与基于心率的消耗分开显示。</string>
+    <string name="sw_log_title">记录力量训练</string>
+    <string name="sw_edit_title">编辑力量训练</string>
+    <string name="sw_privacy_note">动作和组数据仅保存在此设备及你的 NOOP 备份中。</string>
+    <string name="sw_duration_minutes">时长（分钟）</string>
+    <string name="sw_routines_header">训练计划</string>
+    <string name="sw_routines_empty">保存此安排，以后可重复使用。</string>
+    <string name="sw_routines_some">加载已保存的安排，或更新当前安排。</string>
+    <string name="sw_load_routine">加载计划</string>
+    <string name="sw_save_routine">保存计划</string>
+    <string name="sw_update_routine">更新计划</string>
+    <string name="sw_rest_timer_header">休息计时</string>
+    <string name="sw_next_set_in">距下一组</string>
+    <string name="sw_ready">准备好就开始</string>
+    <string name="sw_rest_complete">休息结束</string>
+    <string name="sw_rest_button">休息 %1$s</string>
+    <string name="sw_restart">重新开始</string>
+    <string name="sw_start">开始</string>
+    <string name="sw_add_30s">+30 秒</string>
+    <string name="sw_skip">跳过</string>
+    <string name="sw_exercise">动作</string>
+    <string name="sw_remove">移除</string>
+    <string name="sw_reps">次数</string>
+    <string name="sw_unit_load">负重（%1$s）</string>
+    <string name="sw_warmup">热身</string>
+    <string name="sw_remove_set">删除此组</string>
+    <string name="sw_add_set">添加一组</string>
+    <string name="sw_add_exercise">添加动作</string>
+    <string name="sw_volume_note_dialog">训练量 = 正式组的次数 × 外部负重。不计热身组及无负重的自重组。</string>
+    <string name="sw_validation">请添加动作，并为每组填写 1–1000 次。负重可选。</string>
+    <string name="sw_add">添加</string>
+    <string name="sw_save">保存</string>
+    <string name="sw_cancel">取消</string>
+    <string name="sw_routines_title">力量训练计划</string>
+    <string name="sw_load">加载</string>
+    <string name="sw_delete">删除</string>
+    <string name="sw_done">完成</string>
+    <string name="sw_save_routine_title">保存计划</string>
+    <string name="sw_routine_name">计划名称</string>
+    <string name="sw_save_routine_hint">保存这些动作、组数、次数和负重，供以后训练使用。</string>
+    <string name="sw_started">开始于 %1$s</string>
+    <string name="sw_progression_header">进步</string>
+    <string name="sw_new_pr_one">★ %1$d 项新纪录</string>
+    <string name="sw_new_pr_many">★ %1$d 项新纪录</string>
+    <string name="sw_progress_compared">与之前记录的组相比。估算 1RM 仅对 1–12 次的组使用 Epley 公式。</string>
+    <string name="sw_progress_first">这是该动作的首个负重记录。估算 1RM 对 1–12 次使用 Epley 公式。</string>
+</resources>

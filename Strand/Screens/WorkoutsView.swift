@@ -88,6 +88,12 @@ struct WorkoutsView: View {
     /// The add/edit sheet target: `.some(nil)` = add a new workout, `.some(row)` = edit `row`,
     /// `nil` = sheet closed. Wrapped in Identifiable so `.sheet(item:)` can drive presentation.
     @State private var sheet: WorkoutSheetTarget?
+    /// Dedicated set-level editor. Kept separate from the generic workout form so strength payloads
+    /// cannot be accidentally flattened to a note or silently lost during an edit.
+    @State private var strengthSheet: WorkoutSheetTarget?
+    /// Full strength history for personal-record comparisons. Seeded from the loaded window so the
+    /// sheet opens immediately, then replaced by a lightweight strength-only history read.
+    @State private var strengthHistoryRows: [WorkoutRow] = []
 
     /// The read-only detail screen target — a tapped session. Drives a `.sheet(item:)` separate from
     /// the add/edit sheet so a primary tap (detail) and the ••• menu (edit) never collide. (#410)
@@ -251,6 +257,19 @@ struct WorkoutsView: View {
                     await reload()
                     // Post-log note (#439): if this sport now has a solid/building recovery-cost
                     // entry, surface its personal-pattern sentence as a transient caption.
+                    await showPostLogNote(forSport: WorkoutSource.displaySport(row.sport))
+                }
+            }
+        }
+        .sheet(item: $strengthSheet) { target in
+            StrengthWorkoutSheet(editing: target.editing,
+                                 historicalWorkouts: historicalStrengthWorkouts(for: target)) { row, replacing in
+                Task {
+                    await repo.saveManualWorkout(row, replacing: target.isCopy ? nil : replacing)
+                    // HR-derived fields remain owned by the ordinary analysis path; set volume is not
+                    // substituted for cardiovascular Effort.
+                    await model.intelligence.analyzeRecent()
+                    await reload()
                     await showPostLogNote(forSport: WorkoutSource.displaySport(row.sport))
                 }
             }
@@ -437,7 +456,27 @@ struct WorkoutsView: View {
     // MARK: - Row actions (edit · relabel · dismiss · delete)
 
     private func editWorkout(_ row: WorkoutRow, isCopy: Bool = false) {
-        sheet = WorkoutSheetTarget(editing: row, isCopy: isCopy)
+        let target = WorkoutSheetTarget(editing: row, isCopy: isCopy)
+        if StrengthWorkout.decode(row.strengthJSON) != nil { presentStrengthSheet(target) }
+        else { sheet = target }
+    }
+
+    private func presentStrengthSheet(_ target: WorkoutSheetTarget) {
+        strengthHistoryRows = allRows
+        strengthSheet = target
+        Task {
+            let fullHistory = await repo.strengthWorkoutRows()
+            guard strengthSheet?.id == target.id else { return }
+            strengthHistoryRows = fullHistory
+        }
+    }
+
+    private func historicalStrengthWorkouts(for target: WorkoutSheetTarget) -> [StrengthWorkout] {
+        strengthHistoryRows.compactMap { row in
+            if !target.isCopy, let editing = target.editing,
+               row.startTs == editing.startTs, row.sport == editing.sport { return nil }
+            return StrengthWorkout.decode(row.strengthJSON)
+        }
     }
 
     private func relabel(_ row: WorkoutRow, to sport: String) {
@@ -591,6 +630,13 @@ struct WorkoutsView: View {
         .accessibilityLabel("Add a workout")
     }
 
+    private var logStrengthButton: some View {
+        NoopButton("Log strength", systemImage: "dumbbell.fill", kind: .secondary, fullWidth: true) {
+            presentStrengthSheet(WorkoutSheetTarget(editing: nil))
+        }
+        .accessibilityLabel("Log a strength workout")
+    }
+
     /// #459: begin (or jump back into) a live, manually-tracked workout straight from Workouts — the
     /// place people instinctively look — instead of only from the Live screen. Starts the session and
     /// presents the in-exercise view directly (no cross-view auto-present race with LiveView's sheet).
@@ -607,13 +653,33 @@ struct WorkoutsView: View {
         .accessibilityLabel(model.activeWorkout == nil ? "Start a workout" : "View the active workout")
     }
 
-    /// Equal-width primary actions share the same content width as every card below them.
+    /// Primary actions share the same content width as every card below them. A compact phone gets a
+    /// second row so three useful verbs never collapse into unreadable slivers.
+    @ViewBuilder
     private var workoutActionRow: some View {
+        #if os(iOS)
+        if hSizeClass == .compact {
+            VStack(spacing: NoopMetrics.rowSpacing) {
+                HStack(spacing: NoopMetrics.rowSpacing) {
+                    startLiveWorkoutButton.frame(maxWidth: .infinity)
+                    addWorkoutButton.frame(maxWidth: .infinity)
+                }
+                logStrengthButton
+            }
+            .frame(maxWidth: .infinity)
+        } else {
+            wideWorkoutActionRow
+        }
+        #else
+        wideWorkoutActionRow
+        #endif
+    }
+
+    private var wideWorkoutActionRow: some View {
         HStack(spacing: NoopMetrics.rowSpacing) {
-            startLiveWorkoutButton
-                .frame(maxWidth: .infinity)
-            addWorkoutButton
-                .frame(maxWidth: .infinity)
+            startLiveWorkoutButton.frame(maxWidth: .infinity)
+            addWorkoutButton.frame(maxWidth: .infinity)
+            logStrengthButton.frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity)
     }
@@ -1593,7 +1659,8 @@ struct WorkoutsView: View {
         WorkoutRow(startTs: row.startTs, endTs: row.endTs, sport: WorkoutSource.displaySport(row.sport),
                    source: "manual", durationS: row.durationS, energyKcal: row.energyKcal,
                    avgHr: row.avgHr, maxHr: row.maxHr, strain: row.strain, distanceM: row.distanceM,
-                   zonesJSON: row.zonesJSON, notes: row.notes, steps: row.steps)
+                   zonesJSON: row.zonesJSON, notes: row.notes, steps: row.steps,
+                   strengthJSON: row.strengthJSON)
     }
 
     /// #796 - the per-session Effort cell label: the stored 0-100 strain mapped to the user's Effort scale
@@ -1895,28 +1962,28 @@ private func previewWorkoutRows() -> [WorkoutRow] {
         WorkoutRow(startTs: now - day * 0 - 3600, endTs: now - day * 0,
                    sport: "Running", source: "whoop", durationS: 3600, energyKcal: 712,
                    avgHr: 152, maxHr: 178, strain: 14.2, distanceM: 10_400,
-                   zonesJSON: #"{"z1":12.5,"z2":28.0,"z3":33.5,"z4":18.0,"z5":6.0}"#, notes: nil, steps: nil),
+                   zonesJSON: #"{"z1":12.5,"z2":28.0,"z3":33.5,"z4":18.0,"z5":6.0}"#, notes: nil, steps: nil, strengthJSON: nil),
         WorkoutRow(startTs: now - day * 1 - 2700, endTs: now - day * 1,
                    sport: "Strength Training", source: "whoop", durationS: 2700, energyKcal: 388,
                    avgHr: 118, maxHr: 156, strain: 9.4, distanceM: nil,
-                   zonesJSON: nil, notes: nil, steps: nil),
+                   zonesJSON: nil, notes: nil, steps: nil, strengthJSON: nil),
         WorkoutRow(startTs: now - day * 2 - 1800, endTs: now - day * 2,
                    sport: "Cycling", source: "apple_health", durationS: 1800, energyKcal: 240,
                    avgHr: nil, maxHr: nil, strain: nil, distanceM: 12_800,
-                   zonesJSON: nil, notes: nil, steps: nil),
+                   zonesJSON: nil, notes: nil, steps: nil, strengthJSON: nil),
         WorkoutRow(startTs: now - day * 3 - 1500, endTs: now - day * 3,
                    sport: "Running", source: "apple_health", durationS: 1500, energyKcal: 310,
                    avgHr: nil, maxHr: nil, strain: nil, distanceM: 5_100,
-                   zonesJSON: nil, notes: nil, steps: nil),
+                   zonesJSON: nil, notes: nil, steps: nil, strengthJSON: nil),
         WorkoutRow(startTs: now - day * 4 - 3300, endTs: now - day * 4,
                    sport: "Cycling", source: "whoop", durationS: 3300, energyKcal: 540,
                    avgHr: 134, maxHr: 162, strain: 11.8, distanceM: 24_600,
                    // Android key shape on purpose — exercises the cross-platform parser.
-                   zonesJSON: #"{"zone1":20.0,"zone2":35.0,"zone3":30.0,"zone4":10.0}"#, notes: nil, steps: nil),
+                   zonesJSON: #"{"zone1":20.0,"zone2":35.0,"zone3":30.0,"zone4":10.0}"#, notes: nil, steps: nil, strengthJSON: nil),
         WorkoutRow(startTs: now - day * 6 - 2400, endTs: now - day * 6,
                    sport: "Yoga", source: "whoop", durationS: 2400, energyKcal: 165,
                    avgHr: 92, maxHr: 118, strain: 5.1, distanceM: nil,
-                   zonesJSON: nil, notes: nil, steps: nil),
+                   zonesJSON: nil, notes: nil, steps: nil, strengthJSON: nil),
     ]
 }
 

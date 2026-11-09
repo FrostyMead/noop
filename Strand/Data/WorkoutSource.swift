@@ -321,19 +321,21 @@ enum WorkoutSource: Equatable {
     // MARK: - Building / preserving rows
 
     /// Carry the captured fields the add/edit sheet does NOT expose (maxHr, strain, zonesJSON, notes,
-    /// steps) over from the row being edited. A v1.67 live-tracked session has real captured
+    /// steps, strengthJSON) over from the row being edited. A v1.67 live-tracked session has real captured
     /// strain/maxHr; rebuilding the row from the sheet's inputs alone would silently wipe them on an
     /// edit. No-op for a fresh add (`old == nil`). `distanceM` is NOW a sheet field (#1195), so it comes
     /// from the freshly built `row` (the sheet pre-fills it from the edited row, so an untouched field
     /// preserves the captured GPS distance and a cleared one clears it) rather than being force-carried
-    /// from `old`. `steps` (#1058) has no sheet field at all, so it is carried like the others (#1444).
+    /// from `old`. `steps` (#1058) and structured strength data have no generic-sheet fields at all, so
+    /// they are carried like the others (#1444).
     static func preservingCaptured(_ row: WorkoutRow, from old: WorkoutRow?) -> WorkoutRow {
         guard let old else { return row }
         return WorkoutRow(startTs: row.startTs, endTs: row.endTs, sport: row.sport,
                           source: row.source, durationS: row.durationS,
                           energyKcal: row.energyKcal, avgHr: row.avgHr,
                           maxHr: old.maxHr, strain: old.strain, distanceM: row.distanceM,
-                          zonesJSON: old.zonesJSON, notes: old.notes, steps: old.steps)
+                          zonesJSON: old.zonesJSON, notes: old.notes, steps: old.steps,
+                          strengthJSON: old.strengthJSON)
     }
 
     /// Build a retroactive manual workout (source "manual", persisted under the strap deviceId by the
@@ -362,7 +364,7 @@ enum WorkoutSource: Equatable {
         return WorkoutRow(startTs: s, endTs: end, sport: trimmed, source: "manual",
                           durationS: Double(durationSeconds), energyKcal: energyKcal,
                           avgHr: avgHr, maxHr: nil, strain: nil, distanceM: distanceM,
-                          zonesJSON: nil, notes: nil, steps: nil)
+                          zonesJSON: nil, notes: nil, steps: nil, strengthJSON: nil)
     }
 }
 
@@ -425,9 +427,10 @@ struct WorkoutFilter: Equatable {
 
 enum WorkoutMerge {
 
-    /// Only MANUAL and DETECTED rows can be merged (imported history stays read-only). A merge needs at
-    /// least two eligible rows.
+    /// Only MANUAL and DETECTED rows can be merged (imported history stays read-only). Structured
+    /// strength logs stay atomic until a set-aware merge is defined. A merge needs at least two rows.
     static func isMergeable(_ row: WorkoutRow) -> Bool {
+        guard row.strengthJSON == nil else { return false }
         switch WorkoutSource.classify(row.source) {
         case .manual, .detected: return true
         case .whoop, .apple, .lifting, .activityFile: return false
@@ -505,6 +508,6 @@ enum WorkoutMerge {
         return WorkoutRow(startTs: start, endTs: end, sport: mergedSport, source: "manual",
                           durationS: durationS, energyKcal: energyKcal, avgHr: avgHr, maxHr: maxHr,
                           strain: nil, distanceM: distanceM, zonesJSON: nil, notes: mergedNotes,
-                          steps: mergedSteps)
+                          steps: mergedSteps, strengthJSON: nil)
     }
 }

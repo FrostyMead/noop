@@ -116,6 +116,13 @@ object CardAppearance {
     }
 }
 
+/** The light theme's card lift: a soft, wide shadow at low alpha. Dark cards are flat. */
+internal object CardShadow {
+    val elevation = 6.dp
+    val ambient = Color.Black.copy(alpha = 0.05f)
+    val spot = Color.Black.copy(alpha = 0.10f)
+}
+
 fun Modifier.frostedCardSurface(
     tint: Color? = null,
     cornerRadius: Dp = Metrics.cardRadius,
@@ -126,24 +133,34 @@ fun Modifier.frostedCardSurface(
     // live-preview. Content drawn above the surface is unaffected, so numbers/labels stay readable.
     val op = CardAppearance.opacity
     this
-        // Elevation idiom: DARK is flat (the hairline + hue carry the edge). LIGHT raises the white card
-        // off the warm-paper canvas with a soft drop shadow — the hairline alone is too faint on paper.
+        // Elevation idiom: DARK is flat — the card's own tone carries the edge against the near-black
+        // canvas. LIGHT lifts the white card off the cool canvas with a soft, diffuse shadow (low-alpha
+        // ambient + spot, so it reads as depth rather than a grey outline).
         .then(
             if (Palette.isLight)
-                Modifier.shadow(elevation = (6f * op).dp, shape = RoundedCornerShape(cornerRadius), clip = false)
+                Modifier.shadow(
+                    elevation = (CardShadow.elevation.value * op).dp,
+                    shape = RoundedCornerShape(cornerRadius),
+                    clip = false,
+                    ambientColor = CardShadow.ambient,
+                    spotColor = CardShadow.spot,
+                )
             else Modifier
         )
         .drawBehind {
             val radiusPx = cornerRadius.toPx()
             val corner = androidx.compose.ui.geometry.CornerRadius(radiusPx, radiusPx)
             val fill = Palette.surfaceRaised.copy(alpha = Palette.surfaceRaised.alpha * op)
+            // Opaque cards are borderless; a hairline returns only when the user makes cards translucent
+            // over a backdrop, where the fill alone no longer separates card from background.
             val border = Palette.hairline.copy(alpha = Palette.hairline.alpha * op)
+            val drawBorder = op < 0.999f
 
             if (tint == null) {
                 // NEUTRAL card (iOS FrostedCardSurface tint == nil): a FLAT raised surface — no vertical
                 // bevel gradient, no accent wash, and a PLAIN hairline border (no accent bias).
                 drawRoundRect(color = fill, cornerRadius = corner)
-                drawRoundRect(color = border, cornerRadius = corner, style = Stroke(width = 1.dp.toPx()))
+                if (drawBorder) drawRoundRect(color = border, cornerRadius = corner, style = Stroke(width = 1.dp.toPx()))
             } else {
                 // TINTED card (iOS parity, 2026-06-23 "synthesis has the old blue style"): a FLAT raised
                 // surface — the SAME WHOOP grey as the neutral card, NO navy bevel gradient — carrying only
@@ -164,12 +181,12 @@ fun Modifier.frostedCardSurface(
                     cornerRadius = corner,
                 )
                 // 3) Plain 1px hairline (no accent bias) — matches the neutral card.
-                drawRoundRect(color = border, cornerRadius = corner, style = Stroke(width = 1.dp.toPx()))
+                if (drawBorder) drawRoundRect(color = border, cornerRadius = corner, style = Stroke(width = 1.dp.toPx()))
             }
         }
 }
 
-// MARK: - NoopCard — the one card surface (Titanium & Gold frosted card, 16dp radius)
+// MARK: - NoopCard — the one card surface (premium frosted card, generous continuous radius)
 //
 // PUBLIC API is unchanged (modifier, padding, content); an optional [tint] was ADDED
 // (defaulted null) so callers can opt into a per-domain accent wash without breaking
@@ -186,8 +203,10 @@ fun NoopCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(shape)
             .frostedCardSurface(tint = tint, cornerRadius = Metrics.cardRadius)
+            // Clip after painting the surface so the light-theme shadow can fall outside the card,
+            // while every child (charts, images and pressed states) still respects the rounded edge.
+            .clip(shape)
             .padding(padding),
     ) {
         content()
@@ -246,12 +265,12 @@ fun SyncingHistoryNote(chunks: Int, modifier: Modifier = Modifier) {
     }
 }
 
-// MARK: - Overline label (ALL-CAPS, semibold, +0.8 tracking, secondary)
+// MARK: - Overline label (sentence case, semibold, secondary)
 
 @Composable
 fun Overline(text: String, modifier: Modifier = Modifier, color: Color = Palette.textSecondary) {
     Text(
-        text = text.uppercase(),
+        text = text,
         style = NoopType.overline,
         color = color,
         modifier = modifier,
@@ -260,6 +279,17 @@ fun Overline(text: String, modifier: Modifier = Modifier, color: Color = Palette
 
 // MARK: - Section header
 
+/**
+ * A section's header: its name, an optional qualifier, and an optional trailing note.
+ *
+ * The name leads as a sentence-case [NoopType.title3] on ONE line with the trailing note beside it, and
+ * the qualifier — when there is one — sits quietly beneath, so the section's actual name is the first
+ * thing the eye meets.
+ *
+ * Nothing is dropped — the qualifier still renders, demoted rather than deleted, because on some cards
+ * it carries real context ("From your nightly readings") even where on others it is only a category word.
+ * Deciding which is which across 61 call sites is a judgement per site; changing the hierarchy is not.
+ */
 @Composable
 fun SectionHeader(
     title: String,
@@ -269,19 +299,26 @@ fun SectionHeader(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space2),
     ) {
-        if (overline != null || trailing != null) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-            ) {
-                if (overline != null) Overline(overline, modifier = Modifier.weight(1f))
-                if (trailing != null) {
-                    Text(trailing, style = NoopType.footnote, color = Palette.textSecondary)
-                }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = title,
+                style = NoopType.title3,
+                color = Palette.textPrimary,
+                modifier = Modifier.weight(1f),
+            )
+            if (trailing != null) {
+                Spacer(Modifier.width(Metrics.space8))
+                Text(trailing, style = NoopType.footnote, color = Palette.textTertiary)
             }
         }
-        Text(title, style = NoopType.title2, color = Palette.textPrimary)
+        if (overline != null) {
+            Text(overline, style = NoopType.footnote, color = Palette.textTertiary)
+        }
     }
 }
 
@@ -623,21 +660,21 @@ fun <T> SegmentedPillControl(
             .height(36.dp)
             .clip(outerShape)
             .background(Palette.surfaceInset)
-            .border(1.dp, Palette.hairline, outerShape)
-            .padding(4.dp),
+            .padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         items.forEach { item ->
             val selected = item == selection
             val itemEnabled = enabled(item)
-            // Selected segment is SELECTION CHROME → follows the accent: a gold gradient + gold-deep ink
-            // on dark; a flat blue accent + white ink on light (so light selection matches the blue
-            // chrome, not gold). Unselected stays clear with tertiary text; disabled dims further.
+            // Selected segment is neutral chrome: a raised thumb on the recessed track (a white thumb with a
+            // soft lift on light, a lighter grey on dark), with primary ink. Colour stays reserved for data.
             val pillShape = RoundedCornerShape(50)
             val pillBg = if (selected) {
-                if (Palette.isLight) Modifier.background(Palette.accent, pillShape)
-                else Modifier.background(Brush.linearGradient(*Palette.goldGradient.toTypedArray()), pillShape)
+                if (Palette.isLight) Modifier
+                    .shadow(2.dp, pillShape, clip = false, ambientColor = CardShadow.ambient, spotColor = CardShadow.spot)
+                    .background(Palette.surfaceRaised, pillShape)
+                else Modifier.background(Palette.hairlineStrong, pillShape)
             } else {
                 Modifier
             }
@@ -654,14 +691,14 @@ fun <T> SegmentedPillControl(
             ) {
                 Text(
                     text = label(item),
-                    style = NoopType.captionNumber,
+                    style = if (selected) NoopType.captionNumber.copy(fontWeight = FontWeight.SemiBold)
+                        else NoopType.captionNumber,
                     maxLines = if (adaptsToAvailableWidth) 1 else Int.MAX_VALUE,
                     overflow = if (adaptsToAvailableWidth) TextOverflow.Ellipsis else TextOverflow.Clip,
                     color = when {
-                        selected && Palette.isLight -> androidx.compose.ui.graphics.Color.White
-                        selected -> Palette.goldDeepText
+                        selected -> Palette.textPrimary
                         !itemEnabled -> Palette.textTertiary.copy(alpha = 0.45f)
-                        else -> Palette.textTertiary
+                        else -> Palette.textSecondary
                     },
                 )
             }
@@ -1167,18 +1204,18 @@ fun ScenicHeroBackground(
 // MARK: - ScreenScaffold (ported from Strand/Screens/ScreenScaffold.swift)
 //
 // Standard scrollable screen container: a title + optional subtitle header over the
-// dark surface, then a left-aligned content column with 28dp screen padding.
+// dark surface, then a left-aligned content column with the shared screen inset.
 
 @Composable
 fun ScreenScaffold(
     title: String?,
     subtitle: String? = null,
     modifier: Modifier = Modifier,
-    // Top inset above the content. Defaults to the standard 28dp screen padding; a screen that
+    // Top inset above the content. Defaults to the shared screen inset; a screen that
     // supplies its own compact header (Today, title = null) can pass a smaller value to tighten the
     // gap above its first element — Compose forbids negative padding, so this is how iOS's
     // `.padding(top: -16)` tightening is expressed.
-    topPadding: Dp = 28.dp,
+    topPadding: Dp = Metrics.screenPadding,
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     // Optional full-bleed view drawn behind the scroll content at the TOP of the screen (e.g. Today's
@@ -1209,7 +1246,12 @@ fun ScreenScaffold(
         Column(
             modifier = columnModifier
                 .verticalScroll(rememberScrollState())
-                .padding(start = 28.dp, end = 28.dp, top = topPadding, bottom = 28.dp),
+                .padding(
+                    start = Metrics.screenPadding,
+                    end = Metrics.screenPadding,
+                    top = topPadding,
+                    bottom = Metrics.screenPadding,
+                ),
             // #765: one shared inter-card spacing token (was a bare `20.dp`), so the eager + lazy scaffolds
             // and every screen through them keep the SAME uniform gap between top-level cards.
             verticalArrangement = Arrangement.spacedBy(Metrics.screenRowSpacing),
@@ -1295,7 +1337,7 @@ fun ScreenScaffold(
 //
 // The content slot is a [LazyListScope] (item { } / items(...)) rather than a ColumnScope,
 // so callers stay explicit about what is a one-off header vs the lazily-built list — and
-// every existing ScreenScaffold caller is untouched. The header, 28dp screen padding and
+// every existing ScreenScaffold caller is untouched. The header, shared screen inset and
 // the shared Metrics.screenRowSpacing inter-item gap match ScreenScaffold so the two read identically.
 
 @Composable
@@ -1306,7 +1348,7 @@ fun LazyScreenScaffold(
     // Mirrors ScreenScaffold: a screen with a scene-backed header (Today-style) can tighten the gap
     // above its first row, and supply leading/trailing header actions + a screen-level scene backdrop.
     // All defaulted, so the existing flat callers (Intelligence) are byte-for-byte untouched.
-    topPadding: Dp = 28.dp,
+    topPadding: Dp = Metrics.screenPadding,
     // The inter-row vertical spacing between top-level items. Defaults to the shared `screenRowSpacing`
     // (20dp) so every existing caller is byte-for-byte untouched; the liquid Today passes a tighter value
     // to match the iOS Today's compact `VStack(spacing: 12)` section rhythm (the maintainer's "iOS is
@@ -1371,7 +1413,12 @@ fun LazyScreenScaffold(
         LazyColumn(
             modifier = listModifier,
             state = listState,
-            contentPadding = PaddingValues(start = 28.dp, top = topPadding, end = 28.dp, bottom = 28.dp),
+            contentPadding = PaddingValues(
+                start = Metrics.screenPadding,
+                top = topPadding,
+                end = Metrics.screenPadding,
+                bottom = Metrics.screenPadding,
+            ),
             // #765: the shared inter-card spacing token by default (Today/Explore + the eager screens share
             // one uniform card rhythm); a caller may pass a tighter [rowSpacing] (the liquid Today does, for
             // the iOS-compact section rhythm).
@@ -1452,9 +1499,9 @@ fun StepperButton(symbol: String, onClick: () -> Unit, label: String) {
     Box(
         modifier = Modifier
             .size(30.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(Metrics.cornerXs))
             .background(Palette.surfaceInset)
-            .border(1.dp, Palette.hairline, RoundedCornerShape(8.dp))
+            .border(1.dp, Palette.hairline, RoundedCornerShape(Metrics.cornerXs))
             .clickable(onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,

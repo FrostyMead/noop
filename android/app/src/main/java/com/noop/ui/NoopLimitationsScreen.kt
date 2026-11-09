@@ -90,7 +90,12 @@ private fun LimitTableCard() {
                 if (idx > 0) Hairline()
                 Row(
                     modifier = Modifier.fillMaxWidth().semantics {
-                        contentDescription = "${row.feature}: WHOOP 4.0 ${row.whoop4.spoken}, 5.0/MG ${row.whoop5.spoken}"
+                        contentDescription = uiString(
+                            R.string.a11y_model_capability_row,
+                            row.feature,
+                            row.whoop4.spoken,
+                            row.whoop5.spoken,
+                        )
                     },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
