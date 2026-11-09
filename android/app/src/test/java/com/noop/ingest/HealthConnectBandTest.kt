@@ -81,4 +81,27 @@ class HealthConnectBandTest {
         assertNull(HealthConnectBand.stageTimelineJson(emptyList()))
         assertNull(AnalyticsEngine.sleepSessionFromProvided(HealthConnectBand.sleepSession("hc-x", 0, 28_800, generic)))
     }
+
+    @Test fun dailyVitalsAverageEachDayAndDropNoise() {
+        val rows = HealthConnectBand.dailyVitals(
+            "hc-x",
+            hrvByDay = listOf("2026-03-02" to 60.0, "2026-03-02" to 70.0, "2026-03-01" to 0.0, "2026-03-01" to 55.0),
+            rhrByDay = listOf("2026-03-02" to 50L, "2026-03-02" to 53L, "2026-03-03" to 300L),
+        )
+        assertEquals(listOf("2026-03-01", "2026-03-02"), rows.map { it.day })
+        assertEquals(55.0, rows[0].avgHrv!!, 0.0)
+        assertNull(rows[0].restingHr)
+        assertEquals(65.0, rows[1].avgHrv!!, 0.0)
+        assertEquals(52, rows[1].restingHr)      // 51.5 rounds up
+        assertNull(rows[1].avgSdnn)              // RMSSD is never relabelled as SDNN
+        assertTrue(rows.all { it.deviceId == "hc-x" })
+    }
+
+    @Test fun syncStartsOnALocalDayBoundary() {
+        val zone = java.time.ZoneId.of("Europe/London")
+        val midday = java.time.ZonedDateTime.of(2026, 3, 2, 12, 30, 0, 0, zone).toEpochSecond()
+        val midnight = java.time.ZonedDateTime.of(2026, 3, 2, 0, 0, 0, 0, zone).toEpochSecond()
+        assertEquals(midnight, HealthConnectBand.dayStart(midday, zone))
+        assertEquals(midnight, HealthConnectBand.dayStart(midnight, zone))
+    }
 }

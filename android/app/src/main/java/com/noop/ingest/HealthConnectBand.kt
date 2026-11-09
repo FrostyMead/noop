@@ -4,21 +4,27 @@ import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
+import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.metadata.DataOrigin
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import com.noop.data.DailyMetric
 import com.noop.data.DeviceRegistry
 import com.noop.data.DeviceStatus
 import com.noop.data.HrSample
 import com.noop.data.Metric
-import com.noop.ui.NoopPrefs
 import com.noop.data.PairedDeviceRow
 import com.noop.data.SleepSession
 import com.noop.data.SourceKind
 import com.noop.data.WhoopRepository
+import com.noop.ui.NoopPrefs
 import java.time.Instant
+import java.time.ZoneId
 import kotlin.math.max
+import kotlin.math.round
+import kotlin.math.roundToInt
 
 /**
  * Phase 1 of "any band via Health Connect" (docs/HEALTH_CONNECT_BAND.md): a band whose own phone app
@@ -54,6 +60,30 @@ object HealthConnectBand {
     fun syncStart(lastSyncSec: Long?, nowSec: Long): Long {
         val firstSync = nowSec - FIRST_SYNC_DAYS * 86_400L
         return if (lastSyncSec == null) firstSync else max(firstSync, lastSyncSec - RESYNC_OVERLAP_SEC)
+    }
+
+    /** Local midnight at or before [sec]. Each sync starts on a day boundary, so a day's vitals are always
+     *  re-aggregated from the whole day, never from the tail of a partial window. */
+    fun dayStart(sec: Long, zone: ZoneId): Long =
+        Instant.ofEpochSecond(sec).atZone(zone).toLocalDate().atStartOfDay(zone).toEpochSecond()
+
+    /**
+     * The band's own daily HRV (RMSSD, ms) and resting HR, one row per local day under its id: the summary
+     * inputs [com.noop.analytics.IntelligenceEngine.fillSummaryRecoveries] reads for a day the band owns.
+     * Means of the day's readings; implausible values are dropped. HRV stays RMSSD (avgSdnn left null), as
+     * on import. These rows are read only by scoring, never shown directly (Today merges other sources).
+     */
+    fun dailyVitals(deviceId: String, hrvByDay: List<Pair<String, Double>>, rhrByDay: List<Pair<String, Long>>): List<DailyMetric> {
+        val hrv = hrvByDay.filter { it.second in 1.0..300.0 }.groupBy({ it.first }, { it.second })
+        val rhr = rhrByDay.filter { it.second in 25L..150L }.groupBy({ it.first }, { it.second })
+        return (hrv.keys + rhr.keys).sorted().map { day ->
+            DailyMetric(
+                deviceId = deviceId,
+                day = day,
+                avgHrv = hrv[day]?.average()?.let { round(it * 10.0) / 10.0 },
+                restingHr = rhr[day]?.average()?.roundToInt(),
+            )
+        }
     }
 
     /** HR samples as stored rows: plausible readings only, one per second (the table's key). */
@@ -123,7 +153,7 @@ object HealthConnectBand {
         )
 
     /** Counts from one sync, for the status line and the log. */
-    data class SyncResult(val hrRows: Int, val nights: Int)
+    data class SyncResult(val hrRows: Int, val nights: Int, val vitalDays: Int = 0)
 
     /**
      * Reads [row]'s app's heart rate and sleep since the last sync (see [syncStart]) and stores them under
@@ -137,10 +167,14 @@ object HealthConnectBand {
         val granted = runCatching { client.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
         val canHr = HealthPermission.getReadPermission(HeartRateRecord::class) in granted
         val canSleep = HealthPermission.getReadPermission(SleepSessionRecord::class) in granted
-        if (!canHr && !canSleep) return null
+        val canHrv = HealthPermission.getReadPermission(HeartRateVariabilityRmssdRecord::class) in granted
+        val canRhr = HealthPermission.getReadPermission(RestingHeartRateRecord::class) in granted
+        if (!canHr && !canSleep && !canHrv && !canRhr) return null
 
         val now = Instant.now().epochSecond
-        val filter = TimeRangeFilter.between(Instant.ofEpochSecond(syncStart(HealthConnectBandPrefs.lastSync(context, row.id), now)), Instant.ofEpochSecond(now))
+        val zone = ZoneId.systemDefault()
+        val from = dayStart(syncStart(HealthConnectBandPrefs.lastSync(context, row.id), now), zone)
+        val filter = TimeRangeFilter.between(Instant.ofEpochSecond(from), Instant.ofEpochSecond(now))
         val origin = setOf(DataOrigin(pkg))
 
         var hrStored = 0
@@ -173,9 +207,31 @@ object HealthConnectBand {
             if (nights.isNotEmpty()) repo.upsertSleepSessions(nights)
         }
 
+        // Daily HRV + resting HR, keyed by the local day each reading was recorded in (as on import).
+        val hrv = ArrayList<Pair<String, Double>>()
+        val rhr = ArrayList<Pair<String, Long>>()
+        if (canHrv) runCatching {
+            var token: String? = null
+            do {
+                val page = client.readRecords(ReadRecordsRequest(HeartRateVariabilityRmssdRecord::class, filter, origin, pageSize = 1000, pageToken = token))
+                page.records.forEach { hrv += HealthConnectImporter.localDayKey(it.time, it.zoneOffset, zone) to it.heartRateVariabilityMillis }
+                token = page.pageToken
+            } while (token != null)
+        }
+        if (canRhr) runCatching {
+            var token: String? = null
+            do {
+                val page = client.readRecords(ReadRecordsRequest(RestingHeartRateRecord::class, filter, origin, pageSize = 1000, pageToken = token))
+                page.records.forEach { rhr += HealthConnectImporter.localDayKey(it.time, it.zoneOffset, zone) to it.beatsPerMinute }
+                token = page.pageToken
+            } while (token != null)
+        }
+        val vitals = dailyVitals(row.id, hrv, rhr)
+        if (vitals.isNotEmpty()) repo.upsertDailyMetrics(vitals)
+
         registry.touchLastSeen(row.id, now)
         HealthConnectBandPrefs.setLastSync(context, row.id, now)
-        return SyncResult(hrRows = hrStored, nights = nights.size)
+        return SyncResult(hrRows = hrStored, nights = nights.size, vitalDays = vitals.size)
     }
 }
 

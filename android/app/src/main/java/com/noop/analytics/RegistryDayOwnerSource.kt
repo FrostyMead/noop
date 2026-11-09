@@ -81,6 +81,14 @@ class RegistryDayOwnerSource(
     // registry lookup skinTempFamily uses; deliberately its own small helper rather than folding into
     // DeviceFamily, which has no Oura case (#1086) and a tolerance-in-seconds isn't a temperature-scale
     // concern. Mirrors the Swift IntelligenceEngine.skinTempWornToleranceSec(forOwner:devices:).
+    // Health Connect bands carry summary HRV, not RR: while band scoring is on, their own daily HRV + resting
+    // HR fill the Charge of the days they own (IntelligenceEngine.fillSummaryRecoveries). Android-only.
+    override suspend fun summaryRecoverySources(): List<String> =
+        if (!includeHealthConnectBands()) emptyList()
+        else registry.all()
+            .filter { it.sourceKind == SourceKind.healthConnect.name && it.status != DeviceStatus.archived.name }
+            .map { it.id }
+
     override suspend fun skinTempWornToleranceSec(deviceId: String): Long {
         val d = registry.all().firstOrNull { it.id == deviceId }
         return if (d?.brand == "Oura") AnalyticsEngine.DEFAULT_OURA_WORN_TOLERANCE_SEC else 0
