@@ -866,15 +866,15 @@ fun SleepScreen(
 @Composable
 internal fun SleepMarkCard(onMark: (SleepMarkType) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        SectionHeader(title = uiString(R.string.l10n_sleep_screen_sleep_marks_8e9b86f0), overline = "Tap to log", trailing = "Phase 1")
-        NoopCard(tint = Palette.restColor) {
+        SectionHeader(title = uiString(R.string.l10n_sleep_screen_sleep_marks_8e9b86f0))
+        NoopCard {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     uiString(R.string.l10n_sleep_screen_tap_when_you_re_heading_to_1f401690),
-                    style = NoopType.footnote,
-                    color = Palette.textTertiary,
+                    style = NoopType.subhead,
+                    color = Palette.textSecondary,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(Metrics.gap)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                     Button(
                         onClick = { onMark(SleepMarkType.BEDTIME) },
                         modifier = Modifier.weight(1f).semantics { contentDescription = uiString(R.string.l10n_sleep_screen_log_going_to_sleep_6c2b519d) },
@@ -1121,7 +1121,7 @@ private fun Hero(
         // stub, where it's the only thing the hero can say). Mirrors iOS SleepView.sleepWindowRow.
         // #345: the row shows the WHOLE night's window — on a split night the session (edit anchor)
         // ends mid-night and its endTs contradicted the header pill two lines above.
-        session?.let { SleepWindowRow(windowOnsetTs ?: it.effectiveStartTs, windowWakeTs ?: it.endTs) }
+        if (showNavHeader) session?.let { SleepWindowRow(windowOnsetTs ?: it.effectiveStartTs, windowWakeTs ?: it.endTs) }
         if (display == null) {
             // Honest fallback: this night recorded no usable stage data — never silently
             // substitute another night's hypnogram. (#160)
@@ -1311,7 +1311,7 @@ private fun NapsCard(
     activeIsOura: Boolean = false,
 ) {
     val napMin = naps.sumOf { (it.endTs - it.effectiveStartTs) / 60.0 }
-    NoopCard(padding = Metrics.space14, tint = Palette.restColor) {
+    NoopCard(padding = Metrics.space16) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Text(uiString(R.string.l10n_sleep_screen_daytime_sleep_871c03ca), style = NoopType.eyebrow, color = Palette.textSecondary)
             Text(uiString(R.string.l10n_sleep_screen_naps_2f83e350), style = NoopType.subhead, color = Palette.textPrimary)
