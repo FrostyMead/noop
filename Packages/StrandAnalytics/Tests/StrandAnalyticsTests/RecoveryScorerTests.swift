@@ -223,6 +223,46 @@ final class RecoveryScorerTests: XCTestCase {
         XCTAssertEqual(r, 48, "with no qualifying bin, fall back to the lowest bin mean (never nil on data)")
     }
 
+    func testSleepSessionUsesTheSharedRestingHRArtifactGuards() {
+        for bpm in [35, 50, 75] {
+            let clean = (0..<300).map { HRSample(ts: $0, bpm: bpm) }
+            let dropout = (300..<600).map { HRSample(ts: $0, bpm: 0) }
+            let loneDip = [HRSample(ts: 610, bpm: 25)]
+            XCTAssertEqual(SleepStager.sessionRestingHR(start: 0, end: 900, hr: clean + dropout + loneDip), bpm)
+            XCTAssertNil(SleepStager.sessionRestingHR(start: 0, end: 900, hr: dropout))
+            XCTAssertEqual(SleepStager.sessionRestingHR(start: 0, end: 900,
+                hr: [HRSample(ts: 10, bpm: 0), HRSample(ts: 320, bpm: 48)]), 48)
+        }
+    }
+
+    func testRestingHRDropoutOnlyWindowsStayMissing() {
+        for bpm in [0, 10, 24] {
+            let hr = (0..<300).map { HRSample(ts: $0, bpm: bpm) }
+            XCTAssertNil(RecoveryScorer.restingHR(hr, start: 0, end: 600))
+            // No five-minute bin is visited: exercise the all-sample fallback too.
+            XCTAssertNil(RecoveryScorer.restingHR([HRSample(ts: 0, bpm: bpm)], start: 0, end: 0))
+        }
+    }
+
+    func testRestingHRDropoutsCannotDiluteAValidBin() {
+        for bpm in [25, 35, 50, 75] {
+            let hr = (0..<300).map { HRSample(ts: $0, bpm: $0 % 2 == 0 ? bpm : 0) }
+            XCTAssertEqual(RecoveryScorer.restingHR(hr, start: 0, end: 300), bpm)
+        }
+    }
+
+    func testRestingHRSparseFallbackIgnoresDropoutBins() {
+        let hr = [HRSample(ts: 10, bpm: 0), HRSample(ts: 320, bpm: 48)]
+        XCTAssertEqual(RecoveryScorer.restingHR(hr, start: 0, end: 600), 48)
+    }
+
+    func testRestingHRInvalidSamplesDoNotQualifyAnOtherwiseSparseBin() {
+        var hr = (0..<300).map { HRSample(ts: $0, bpm: 60) }
+        hr.append(HRSample(ts: 300, bpm: 35))
+        hr += (301...599).map { HRSample(ts: $0, bpm: 0) }
+        XCTAssertEqual(RecoveryScorer.restingHR(hr, start: 0, end: 600), 60)
+    }
+
     // MARK: - Recovery Index: recoveryIndexSlope(_:start:end:)
 
     /// Build a synthetic in-bed HR series with a constant slope (bpm/hour) from `startBpm`,
