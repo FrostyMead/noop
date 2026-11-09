@@ -21,4 +21,13 @@
     <string name="hc_inspect_ready_recovery">HRV i tętno spoczynkowe dla Regeneracji</string>
     <string name="hc_inspect_close">Zamknij</string>
     <string name="hc_inspect_failed">Health Connect nie jest dostępny na tym telefonie.</string>
+    <string name="hc_band_add">Dodaj jako urządzenie</string>
+    <string name="hc_band_added">Dodano jako urządzenie</string>
+    <string name="hc_band_section">Opaski przez Health Connect</string>
+    <string name="hc_band_last_sync">Zsynchronizowano %1$s</string>
+    <string name="hc_band_never">Jeszcze nie zsynchronizowano</string>
+    <string name="hc_band_sync_now">Synchronizuj opaski teraz</string>
+    <string name="hc_band_scoring">Oceniaj dni z mojej opaski</string>
+    <string name="hc_band_scoring_detail">Eksperymentalne. Używa tętna i snu z opaski do Wysiłku i Snu w dni bez paska. Zostaw wyłączone, dopóki nie zostanie sprawdzone na twoich nocach.</string>
+    <string name="hc_band_added_toast">Dodano %1$s: dotąd %2$d pomiarów tętna i %3$d nocy.</string>
 </resources>

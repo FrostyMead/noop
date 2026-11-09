@@ -21,4 +21,13 @@
     <string name="hc_inspect_ready_recovery">HRV und Ruhepuls für Erholung</string>
     <string name="hc_inspect_close">Schließen</string>
     <string name="hc_inspect_failed">Health Connect ist auf diesem Telefon nicht verfügbar.</string>
+    <string name="hc_band_add">Als Gerät hinzufügen</string>
+    <string name="hc_band_added">Als Gerät hinzugefügt</string>
+    <string name="hc_band_section">Bänder über Health Connect</string>
+    <string name="hc_band_last_sync">Synchronisiert %1$s</string>
+    <string name="hc_band_never">Noch nicht synchronisiert</string>
+    <string name="hc_band_sync_now">Bänder jetzt synchronisieren</string>
+    <string name="hc_band_scoring">Tage mit meinem Band bewerten</string>
+    <string name="hc_band_scoring_detail">Experimentell. Nutzt Herzfrequenz und Schlaf des Bands für Belastung und Schlaf an Tagen ohne Strap. Aus lassen, bis es an deinen Nächten geprüft ist.</string>
+    <string name="hc_band_added_toast">%1$s hinzugefügt: bisher %2$d Herzfrequenzwerte und %3$d Nächte.</string>
 </resources>

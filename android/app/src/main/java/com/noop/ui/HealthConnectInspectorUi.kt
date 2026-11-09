@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.noop.R
 import com.noop.ingest.HealthConnectInspector
 
@@ -32,7 +33,13 @@ import com.noop.ingest.HealthConnectInspector
  * window, with what it sent and which NOOP scores that data could carry. [result] null = still reading.
  */
 @Composable
-internal fun HealthConnectInspectorDialog(result: List<HealthConnectInspector.SourceSummary>?, onDismiss: () -> Unit) {
+internal fun HealthConnectInspectorDialog(
+    result: List<HealthConnectInspector.SourceSummary>?,
+    onDismiss: () -> Unit,
+    // Apps already registered as a band, and the add action for one that is not (null hides it).
+    addedPackages: Set<String> = emptySet(),
+    onAdd: ((HealthConnectInspector.SourceSummary) -> Unit)? = null,
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Palette.surfaceOverlay,
@@ -52,7 +59,9 @@ internal fun HealthConnectInspectorDialog(result: List<HealthConnectInspector.So
                     modifier = Modifier.heightIn(max = Metrics.dialogScrollableMaxHeight),
                     verticalArrangement = Arrangement.spacedBy(Metrics.space8),
                 ) {
-                    items(result, key = { it.packageName }) { HcSourceCard(it) }
+                    items(result, key = { it.packageName }) { s ->
+                        HcSourceCard(s, added = s.packageName in addedPackages, onAdd = onAdd?.let { add -> { add(s) } })
+                    }
                 }
             }
         },
@@ -65,7 +74,7 @@ internal fun HealthConnectInspectorDialog(result: List<HealthConnectInspector.So
 }
 
 @Composable
-private fun HcSourceCard(s: HealthConnectInspector.SourceSummary) {
+private fun HcSourceCard(s: HealthConnectInspector.SourceSummary, added: Boolean = false, onAdd: (() -> Unit)? = null) {
     val ready = HealthConnectInspector.readiness(s)
     Column(
         Modifier
@@ -100,6 +109,15 @@ private fun HcSourceCard(s: HealthConnectInspector.SourceSummary) {
             HcReady(ready.effort, uiString(R.string.hc_inspect_ready_effort))
             HcReady(ready.sleep, uiString(R.string.hc_inspect_ready_sleep))
             HcReady(ready.recovery, uiString(R.string.hc_inspect_ready_recovery))
+        }
+        // Only an app that sent heart rate or sleep is worth adding as a band.
+        if (added) {
+            Text(uiString(R.string.hc_band_added), style = NoopType.caption, color = Palette.textSecondary)
+        } else if (onAdd != null && (s.hrSamples > 0 || s.sleepSessions > 0)) {
+            TextButton(onClick = onAdd, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                Text(uiString(R.string.hc_band_add), style = NoopType.subhead.copy(fontWeight = FontWeight.SemiBold),
+                    color = Palette.accent)
+            }
         }
     }
 }

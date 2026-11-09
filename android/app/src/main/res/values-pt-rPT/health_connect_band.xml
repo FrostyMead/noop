@@ -21,4 +21,13 @@
     <string name="hc_inspect_ready_recovery">VFC e frequência em repouso para Recuperação</string>
     <string name="hc_inspect_close">Fechar</string>
     <string name="hc_inspect_failed">O Health Connect não está disponível neste telemóvel.</string>
+    <string name="hc_band_add">Adicionar como dispositivo</string>
+    <string name="hc_band_added">Adicionado como dispositivo</string>
+    <string name="hc_band_section">Pulseiras via Health Connect</string>
+    <string name="hc_band_last_sync">Sincronizado %1$s</string>
+    <string name="hc_band_never">Ainda não sincronizado</string>
+    <string name="hc_band_sync_now">Sincronizar pulseiras agora</string>
+    <string name="hc_band_scoring">Pontuar dias com a minha pulseira</string>
+    <string name="hc_band_scoring_detail">Experimental. Usa a frequência cardíaca e o sono da pulseira para Esforço e Sono em dias sem fita. Deixa desligado até ser verificado nas tuas noites.</string>
+    <string name="hc_band_added_toast">%1$s adicionado: %2$d leituras de frequência cardíaca e %3$d noites até agora.</string>
 </resources>

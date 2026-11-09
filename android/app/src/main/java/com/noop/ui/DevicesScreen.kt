@@ -225,8 +225,9 @@ fun DevicesScreen(
         // #1300: a prominent switcher to flip which strap is active — the "switch, don't combine" option
         // for a user with two straps (e.g. a 4.0 + a 5/MG). Shown only with 2+ straps, so it collapses
         // when one is forgotten. Reuses the existing active-strap confirmation (switchTarget).
-        if (activeDevices.size > 1) {
-            item { StrapSwitcher(devices = activeDevices, onSelect = { switchTarget = it }) }
+        val switchable = activeDevices.filter { it.sourceKind != SourceKind.healthConnect.name }
+        if (switchable.size > 1) {
+            item { StrapSwitcher(devices = switchable, onSelect = { switchTarget = it }) }
         }
         items(activeDevices) { device ->
             DeviceCard(
@@ -1014,7 +1015,8 @@ private fun DeviceActionsMenu(
                     }
                     HorizontalDivider(color = Palette.hairline)
                 }
-                if (!isActive) {
+                // A Health Connect band is read from its phone app, not streamed, so it is never the active source.
+                if (!isActive && device.sourceKind != SourceKind.healthConnect.name) {
                     MenuItem(uiString(R.string.l10n_devices_screen_make_active_75690bb8), Icons.Filled.Bolt) { onOpenChange(false); onMakeActive() }
                 }
                 MenuItem(uiString(R.string.l10n_devices_screen_rename_d3f4cb89), Icons.Filled.Edit) { onOpenChange(false); onRename() }

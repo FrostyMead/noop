@@ -1,7 +1,12 @@
 # Any band via Health Connect — design
 
-**Status:** Phase 0 (source inspector) in progress on `feature/health-connect-band`. Android only; the
-Apple twin (HealthKit as a device) is a separate, later piece of work.
+**Status:** Phases 0 and 1 built on `feature/health-connect-band`, awaiting a check on a real band's data.
+Band scoring is behind an experimental switch, off by default. Android only; on Apple, the HealthKit
+Apple Watch (`SourceKind.liveAppleWatch`) already plays this role.
+
+**How to use it today:** Data Sources → Health Connect → *Check what your band sends* → *Add as a device*
+on the band's app. Its heart rate and sleep then sync on every app open (or *Sync bands now*). *Score days
+from my band* (experimental) lets it own the days no strap covers.
 
 ## Goal
 
@@ -43,8 +48,8 @@ A **Health Connect band** is a registered device (`pairedDevice` row) whose id i
 | Phase | What | Validates |
 |---|---|---|
 | **0. Inspector** | Data Sources → "Check what your band sends": per source app, the record types, HR cadence (typical gap between readings), nights with stages, HRV / resting HR presence over the last 7 days. Read-only, nothing stored. | Whether a real band's Health Connect data can carry Effort / Sleep / Recovery **before** anything is built on it. |
-| 1. Band device + capture | Wizard entry "Any band or watch (via Health Connect)" picks the source app; registers `hc-<package>`; stores HR samples and sleep sessions with stages under that id; incremental sync. A Room migration only if a new column is needed (the registry's `sourceKind` is free text). | The data lands, isolated by device id, without touching WHOOP rows. |
-| 2. Scoring | The band owns days it covers (priority below a live strap); Effort from its HR, Sleep from its sessions, Recovery from summary HRV + RHR. | Scores **track** a varying input across nights, not one matched night (`CLAUDE.md`, "validate against the artifact"). |
+| 1. Band device + capture | **Built.** *Add as a device* in the inspector registers `hc-<package>` (`SourceKind.healthConnect`, never active, never a BLE source); stores plausible HR samples and sleep sessions with a stage timeline under that id; syncs on app open and on demand, re-reading a 2-day overlap. No migration (`sourceKind` is free text). Still to do: an entry in the Add Device wizard. | The data lands, isolated by device id, without touching WHOOP rows. |
+| 2. Scoring | **Partly built, experimental, off by default.** With the switch on, the band is a day-owner candidate at priority 1 (below the active strap, like the HealthKit watch), so Effort comes from its HR and Sleep from its stage timeline through the existing paths. Still to do: Recovery from summary HRV + resting HR (it carries no RR intervals). | Scores **track** a varying input across nights, not one matched night (`CLAUDE.md`, "validate against the artifact"). |
 | 3. Background sync | Change-token sync on a periodic worker where background reads are granted. | Today stays current without opening the app. |
 
 ## Rules carried over

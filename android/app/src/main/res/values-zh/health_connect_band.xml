@@ -21,4 +21,13 @@
     <string name="hc_inspect_ready_recovery">HRV 与静息心率可用于恢复</string>
     <string name="hc_inspect_close">关闭</string>
     <string name="hc_inspect_failed">此手机上无法使用 Health Connect。</string>
+    <string name="hc_band_add">添加为设备</string>
+    <string name="hc_band_added">已添加为设备</string>
+    <string name="hc_band_section">通过 Health Connect 的手环</string>
+    <string name="hc_band_last_sync">已同步 %1$s</string>
+    <string name="hc_band_never">尚未同步</string>
+    <string name="hc_band_sync_now">立即同步手环</string>
+    <string name="hc_band_scoring">用我的手环为日期评分</string>
+    <string name="hc_band_scoring_detail">实验功能。在没有绑带数据的日子里，用手环的心率和睡眠计算消耗和睡眠。在你的夜间数据上验证之前请保持关闭。</string>
+    <string name="hc_band_added_toast">已添加 %1$s：目前 %2$d 条心率读数和 %3$d 晚睡眠。</string>
 </resources>

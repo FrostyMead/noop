@@ -21,4 +21,13 @@
     <string name="hc_inspect_ready_recovery">HRV and resting heart rate for Recovery</string>
     <string name="hc_inspect_close">Close</string>
     <string name="hc_inspect_failed">Health Connect isn\'t available on this phone.</string>
+    <string name="hc_band_add">Add as a device</string>
+    <string name="hc_band_added">Added as a device</string>
+    <string name="hc_band_section">Bands via Health Connect</string>
+    <string name="hc_band_last_sync">Synced %1$s</string>
+    <string name="hc_band_never">Not synced yet</string>
+    <string name="hc_band_sync_now">Sync bands now</string>
+    <string name="hc_band_scoring">Score days from my band</string>
+    <string name="hc_band_scoring_detail">Experimental. Uses the band\'s heart rate and sleep for Effort and Sleep on days no strap covers. Leave off until it has been checked on your nights.</string>
+    <string name="hc_band_added_toast">Added %1$s: %2$d heart-rate readings and %3$d nights so far.</string>
 </resources>
